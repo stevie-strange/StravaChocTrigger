@@ -1,0 +1,8 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "MyStorageConnectionAppSetting": "DefaultEndpointsProtocol=https;AccountName=teststrava;AccountKey=DWLJEXpEdAZV8EzSO8WMeEJl0FezL//XOoLwLBfqiAebVt/3L1k59zA/M4yo0XrGTGV0sQ110PglV1GLsFCNDg==;EndpointSuffix=core.windows.net"
+  }
+}
