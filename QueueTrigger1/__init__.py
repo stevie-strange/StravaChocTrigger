@@ -72,10 +72,7 @@ def get_access_token():
             }   
         ) 
         
-        #logging.info("Return Code: " + str(response.status_code))
-        #logging.info("URL: " + response.url)
-        #logging.info("Response data: " + str(response.json()))
-
+        # proceed if request was successfull
         if (response.status_code == requests.codes.ok):
 
             # Handle the new tokens and expire date
