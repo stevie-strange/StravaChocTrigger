@@ -35,7 +35,7 @@ def calculate_cho(slope, intercept, power, cho_list):
 
     # Scale down to recording intervall of 1s
     cho = cho/60/60
-    
+
     # Return the cho conspumtion per s
     return cho
 
@@ -71,7 +71,7 @@ def get_access_token():
                 'grant_type': 'refresh_token'
             }
         )
-        
+
         # proceed if request was successfull
         if response.status_code == requests.codes.ok:
 
@@ -128,7 +128,7 @@ def main(msg: func.QueueMessage) -> None:
 
     # Only process defined activity types
     if activityType == 'Ride' or activityType == 'VirtualRide':
-        
+
         # Get activity duration
         activityDuration = data.get('elapsed_time')
 
@@ -155,11 +155,11 @@ def main(msg: func.QueueMessage) -> None:
                     for element2 in watt_data:
                         if element2 == 'data':
                             watt_numbers = watt_data[element2]
-            
-            
+
+
             # Calculation of CHO consumption
             logging.info("Calculating CHO consumption...")
-    
+
             # Reset CHO count
             total_cho = 0
 
@@ -178,7 +178,7 @@ def main(msg: func.QueueMessage) -> None:
 
                     # if the power value is below the threshold value apply the first formula
                     if current_power <= CURVE_THRESHOLD:
-                    
+
                         # call function with linear function 1
                         total_cho = total_cho + calculate_cho(F1_SLOPE, 
                                                             F1_INTERCEPT, 
@@ -187,7 +187,7 @@ def main(msg: func.QueueMessage) -> None:
 
                         # Since the power value is above the threshold use the second formula
                     else:
-                    
+
                         # call function with linear function 2
                         total_cho = total_cho + calculate_cho(F2_SLOPE,
                                                             F2_INTERCEPT,
@@ -208,8 +208,7 @@ def main(msg: func.QueueMessage) -> None:
             # Inform user about the results
             logging.info("Strava activity updated. Processing has finished.")
         else:
-            response.raise_for_status()     
+            response.raise_for_status()
 
     else:
         logging.info("Unsupported activity type. Processing terminated")
-        
