@@ -144,18 +144,18 @@ def main(msg: func.QueueMessage) -> None:
 
         # Check return code and proceed
         if response.status_code == requests.codes.ok:
-            
+
             activityData=response.json()
 
             # Data processing - Reading the watt stream.
             logging.info("Extracting power data...")
             for element in activityData:
-                if (element == 'watts'):
+                if element == 'watts':
                     watt_data = activityData[element]
                     for element2 in watt_data:
-                        if (element2 == 'data'):
+                        if element2 == 'data':
                             watt_numbers = watt_data[element2]
-        
+            
             
             # Calculation of CHO consumption
             logging.info("Calculating CHO consumption...")
@@ -180,13 +180,19 @@ def main(msg: func.QueueMessage) -> None:
                     if current_power <= CURVE_THRESHOLD:
                     
                         # call function with linear function 1
-                        total_cho = total_cho + calculate_cho(F1_SLOPE, F1_INTERCEPT, current_power, cho_values)
+                        total_cho = total_cho + calculate_cho(F1_SLOPE, 
+                                                            F1_INTERCEPT, 
+                                                            current_power, 
+                                                            cho_values)
 
                         # Since the power value is above the threshold use the second formula
                     else:
                     
                         # call function with linear function 2
-                        total_cho = total_cho + calculate_cho(F2_SLOPE, F2_INTERCEPT, current_power, cho_values)
+                        total_cho = total_cho + calculate_cho(F2_SLOPE,
+                                                            F2_INTERCEPT,
+                                                            current_power,
+                                                            cho_values)
 
             # Inform user about the results
             logging.info("CHO calculation finished. Updating strava activity...")
@@ -196,7 +202,7 @@ def main(msg: func.QueueMessage) -> None:
             payload = {'access_token': access_token}
             body = {'description': 'Total carbohydrates burned (g): ' + str(round(total_cho)) + '\nCarbohydrates burned per hour (g): ' + str(round(total_cho / activityDuration * 60 * 60))}
             response = requests.put(url, params=payload, data=body)
-            if (response.status_code != requests.codes.ok):
+            if response.status_code != requests.codes.ok:
                 response.raise_for_status()
 
             # Inform user about the results
@@ -206,3 +212,4 @@ def main(msg: func.QueueMessage) -> None:
 
     else:
         logging.info("Unsupported activity type. Processing terminated")
+        
