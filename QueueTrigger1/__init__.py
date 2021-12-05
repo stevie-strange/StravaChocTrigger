@@ -23,10 +23,10 @@ F2_INTERCEPT = 91
 
 # function to calculate the CHO consumption
 def calculate_cho(slope, intercept, power, cho_list):
-    
+
     # Calculate CHO consumption based on linear function
     cho = slope * power + intercept
-                    
+
     # scaled down from CHO per day to 1 hour
     cho = cho/24
 
@@ -35,7 +35,7 @@ def calculate_cho(slope, intercept, power, cho_list):
 
     # Scale down to recording intervall of 1s
     cho = cho/60/60
-                    
+    
     # Return the cho conspumtion per s
     return cho
 
@@ -55,7 +55,7 @@ def get_access_token():
     expiresSecret = client.get_secret("StravaTokenExpires")
     expiresDate = float(expiresSecret.value)
 
-    # If access_token has expired then 
+    # If access_token has expired then
     # use the refresh_token to get the new access_token
     if expiresDate < time.time():
 
@@ -69,11 +69,11 @@ def get_access_token():
                'client_secret': os.getenv('StravaClientSecret'),
                 'refresh_token': client.get_secret("StravaRefreshToken").value,
                 'grant_type': 'refresh_token'
-            }   
-        ) 
+            }
+        )
         
         # proceed if request was successfull
-        if (response.status_code == requests.codes.ok):
+        if response.status_code == requests.codes.ok:
 
             # Handle the new tokens and expire date
             new_strava_tokens = response.json()
@@ -90,7 +90,7 @@ def get_access_token():
 
             return new_access_token
         else:
-            response.raise_for_status()    
+            response.raise_for_status()
 
     #return os.getenv('StravaAccessToken')
     return client.get_secret("StravaAccessToken").value
@@ -102,9 +102,9 @@ def main(msg: func.QueueMessage) -> None:
                  msg.get_body().decode('utf-8'))
 
     # Get access token
-    access_token = get_access_token()   
+    access_token = get_access_token()
 
-    #logging.info("Access Token: " + str(access_token))   
+    #logging.info("Access Token: " + str(access_token))
 
     logging.info('Reading activity data...')
 
@@ -117,11 +117,11 @@ def main(msg: func.QueueMessage) -> None:
     response = requests.get(url, params=payload)
 
     # Check return code and proceed
-    if (response.status_code != requests.codes.ok):
-        response.raise_for_status()   
+    if response.status_code != requests.codes.ok:
+        response.raise_for_status()
 
-    data=response.json() 
-    #logging.info("Response data: " + str(data)) 
+    data=response.json()
+    #logging.info("Response data: " + str(data))
 
     # Extract activity type
     activityType = data.get('type')
@@ -135,11 +135,15 @@ def main(msg: func.QueueMessage) -> None:
         logging.info("Load power data of activity...")
         # Get power data stream for 1 activity based on time domain
         url = base_url + activityID + '/streams'
-        payload = {'access_token': access_token, 'keys': 'watts', 'key_by_type': 'true', 'series_type': 'time'}
+        payload = {'access_token': access_token,
+                    'keys': 'watts',
+                    'key_by_type': 'true',
+                    'series_type': 'time'}
+
         response = requests.get(url, params=payload)
 
         # Check return code and proceed
-        if (response.status_code == requests.codes.ok):
+        if response.status_code == requests.codes.ok:
             
             activityData=response.json()
 

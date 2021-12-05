@@ -130,3 +130,5 @@ dmypy.json
 
 # local settings.json
 local.settings.json
+
+.python_packages
