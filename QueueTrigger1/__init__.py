@@ -167,7 +167,7 @@ def main(msg: func.QueueMessage) -> None:
             cho_values = []
 
             for x in watt_numbers:
-                # Reset power 
+                # Reset power
                 current_power = 0
 
                 # Extract the current power value
@@ -180,9 +180,9 @@ def main(msg: func.QueueMessage) -> None:
                     if current_power <= CURVE_THRESHOLD:
 
                         # call function with linear function 1
-                        total_cho = total_cho + calculate_cho(F1_SLOPE, 
-                                                            F1_INTERCEPT, 
-                                                            current_power, 
+                        total_cho = total_cho + calculate_cho(F1_SLOPE,
+                                                            F1_INTERCEPT,
+                                                            current_power,
                                                             cho_values)
 
                         # Since the power value is above the threshold use the second formula
