@@ -152,13 +152,16 @@ def main(msg: func.QueueMessage) -> None:
 
             # Data processing - Reading the watt stream.
             logging.info("Extracting power data...")
-            for element in activity_data:
-                if element == 'watts':
-                    watt_data = activity_data[element]
-                    for element2 in watt_data:
-                        if element2 == 'data':
-                            watt_numbers = watt_data[element2]
+           # for element in activity_data:
+           #     if element == 'watts':
+           #         watt_data = activity_data[element]
+           #         for element2 in watt_data:
+           #             if element2 == 'data':
+           #                 watt_numbers = watt_data[element2]
 
+            watt_data = activity_data.get('watts')
+            watt_numbers = watt_data.get('data')
+            #watt_numbers = activity_data.get('watts').get('data')
 
             # Calculation of CHO consumption
             logging.info("Calculating CHO consumption...")
