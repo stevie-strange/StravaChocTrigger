@@ -1,3 +1,4 @@
+"""main file for the queue trigger""" #pylint: disable=invalid-name
 import logging
 import os
 import time
@@ -20,9 +21,12 @@ F1_INTERCEPT = 0
 F2_SLOPE = 12.06
 F2_INTERCEPT = 91
 
+# Base Strava URL for activities
+BASE_URL ='https://www.strava.com/api/v3/activities/'
 
-# function to calculate the CHO consumption
+
 def calculate_cho(slope, intercept, power, cho_list):
+    """function to calculate the CHO consumption"""
 
     # Calculate CHO consumption based on linear function
     cho = slope * power + intercept
@@ -40,24 +44,24 @@ def calculate_cho(slope, intercept, power, cho_list):
     return cho
 
 
-# function to load & handle the strava tokens
 def get_access_token():
+    """function to load & handle the strava tokens"""
 
     logging.info("Get access token....")
 
     # Prepare access to key vault
-    keyVaultName = os.getenv('StravaKeyVault')
-    KVUri = f"https://{keyVaultName}.vault.azure.net"
+    key_vault_name = os.getenv('StravaKeyVault')
+    key_vault_uri = f"https://{key_vault_name}.vault.azure.net"
     credential = DefaultAzureCredential()
-    client = SecretClient(vault_url=KVUri, credential=credential)
+    client = SecretClient(vault_url=key_vault_uri, credential=credential)
 
     # Read expiry date from key vault
-    expiresSecret = client.get_secret("StravaTokenExpires")
-    expiresDate = float(expiresSecret.value)
+    expires_secret = client.get_secret("StravaTokenExpires")
+    expires_date = float(expires_secret.value)
 
     # If access_token has expired then
     # use the refresh_token to get the new access_token
-    if expiresDate < time.time():
+    if expires_date < time.time():
 
         logging.info("Access token has expired, requesting new token....")
 
@@ -73,7 +77,7 @@ def get_access_token():
         )
 
         # proceed if request was successfull
-        if response.status_code == requests.codes.ok:
+        if response.status_code == requests.codes.ok: #pylint: disable=no-member
 
             # Handle the new tokens and expire date
             new_strava_tokens = response.json()
@@ -89,73 +93,75 @@ def get_access_token():
             client.set_secret("StravaTokenExpires", new_expires_date)
 
             return new_access_token
-        else:
-            response.raise_for_status()
 
-    #return os.getenv('StravaAccessToken')
+        # Raise exception since reponse was not ok.
+        response.raise_for_status()
+
     return client.get_secret("StravaAccessToken").value
 
 
 
 def main(msg: func.QueueMessage) -> None:
+    """Main function"""
+
     logging.info('Python queue trigger function processed a queue item: %s',
                  msg.get_body().decode('utf-8'))
 
     # Get access token
     access_token = get_access_token()
 
-    #logging.info("Access Token: " + str(access_token))
-
     logging.info('Reading activity data...')
 
     # Get single activity
-    base_url='https://www.strava.com/api/v3/activities/'
-    #activityID = str(6279628501)
-    activityID = msg.get_body().decode('utf-8')
-    url = base_url + activityID
-    payload = {'access_token': access_token}
-    response = requests.get(url, params=payload)
+    #base_url='https://www.strava.com/api/v3/activities/'
+
+    activity_id = msg.get_body().decode('utf-8')
+    #payload = {'access_token': access_token}
+    response = requests.get(BASE_URL+activity_id, params={'access_token': access_token})
 
     # Check return code and proceed
-    if response.status_code != requests.codes.ok:
+    if response.status_code != requests.codes.ok: #pylint: disable=no-member
         response.raise_for_status()
 
     data=response.json()
-    #logging.info("Response data: " + str(data))
 
     # Extract activity type
-    activityType = data.get('type')
+    #activity_type = data.get('type')
 
     # Only process defined activity types
-    if activityType == 'Ride' or activityType == 'VirtualRide':
+    #if activity_type == 'Ride' or activity_type == 'VirtualRide':
+    if data.get('type') in ('Ride', 'VirtualRide'):
 
         # Get activity duration
-        activityDuration = data.get('elapsed_time')
+        activity_duration = data.get('elapsed_time')
 
         logging.info("Load power data of activity...")
         # Get power data stream for 1 activity based on time domain
-        url = base_url + activityID + '/streams'
+        #url = BASE_URL + activity_id + '/streams'
         payload = {'access_token': access_token,
                     'keys': 'watts',
                     'key_by_type': 'true',
                     'series_type': 'time'}
 
-        response = requests.get(url, params=payload)
+        response = requests.get(BASE_URL+activity_id+'/streams', params=payload)
 
         # Check return code and proceed
-        if response.status_code == requests.codes.ok:
+        if response.status_code == requests.codes.ok: #pylint: disable=no-member
 
-            activityData=response.json()
+            activity_data=response.json()
 
             # Data processing - Reading the watt stream.
             logging.info("Extracting power data...")
-            for element in activityData:
-                if element == 'watts':
-                    watt_data = activityData[element]
-                    for element2 in watt_data:
-                        if element2 == 'data':
-                            watt_numbers = watt_data[element2]
+           # for element in activity_data:
+           #     if element == 'watts':
+           #         watt_data = activity_data[element]
+           #         for element2 in watt_data:
+           #             if element2 == 'data':
+           #                 watt_numbers = watt_data[element2]
 
+            watt_data = activity_data.get('watts')
+            watt_numbers = watt_data.get('data')
+            #watt_numbers = activity_data.get('watts').get('data')
 
             # Calculation of CHO consumption
             logging.info("Calculating CHO consumption...")
@@ -166,12 +172,12 @@ def main(msg: func.QueueMessage) -> None:
             # List of all CHO values calculated
             cho_values = []
 
-            for x in watt_numbers:
-                # Reset power 
+            for power in watt_numbers:
+                # Reset power
                 current_power = 0
 
                 # Extract the current power value
-                current_power = x
+                current_power = power
 
                 # validate the power information
                 if current_power is not None:
@@ -180,9 +186,9 @@ def main(msg: func.QueueMessage) -> None:
                     if current_power <= CURVE_THRESHOLD:
 
                         # call function with linear function 1
-                        total_cho = total_cho + calculate_cho(F1_SLOPE, 
-                                                            F1_INTERCEPT, 
-                                                            current_power, 
+                        total_cho = total_cho + calculate_cho(F1_SLOPE,
+                                                            F1_INTERCEPT,
+                                                            current_power,
                                                             cho_values)
 
                         # Since the power value is above the threshold use the second formula
@@ -198,11 +204,17 @@ def main(msg: func.QueueMessage) -> None:
             logging.info("CHO calculation finished. Updating strava activity...")
 
             # Update description of Strava activity
-            url = base_url + activityID
-            payload = {'access_token': access_token}
-            body = {'description': 'Total carbohydrates burned (g): ' + str(round(total_cho)) + '\nCarbohydrates burned per hour (g): ' + str(round(total_cho / activityDuration * 60 * 60))}
-            response = requests.put(url, params=payload, data=body)
-            if response.status_code != requests.codes.ok:
+            #url = BASE_URL + activity_id
+            #payload = {'access_token': access_token}
+            body = {'description': 'Total carbohydrates burned (g): '
+                        + str(round(total_cho))
+                        + '\nCarbohydrates burned per hour (g): '
+                        + str(round(total_cho / activity_duration * 60 * 60))}
+
+            response = requests.put(BASE_URL+activity_id,
+                                params={'access_token': access_token},
+                                data=body)
+            if response.status_code != requests.codes.ok: #pylint: disable=no-member
                 response.raise_for_status()
 
             # Inform user about the results
