@@ -1,3 +1,4 @@
+"""main file for the queue trigger""" #pylint: disable=invalid-name
 import logging
 import json
 import os
@@ -6,14 +7,16 @@ import azure.functions as func
 
 
 def main(req: func.HttpRequest, msg: func.Out[func.QueueMessage]) -> func.HttpResponse:
+    """Main function of the HTTPTrigger Function"""
+
     logging.info('Python HTTP trigger function processed a request.')
 
     # Extract the method of the request for further processing
     mode = req.method
 
-    if (mode == 'GET'):
-        logging.info("Running GET Method...") 
-        
+    if mode == 'GET':
+        logging.info("Running GET Method...")
+
         # Verify token from Key Vault Access
         VERIFY_TOKEN = os.getenv('StravaVerifyToken')
 
@@ -30,15 +33,18 @@ def main(req: func.HttpRequest, msg: func.Out[func.QueueMessage]) -> func.HttpRe
                 logging.info('WEBHOOK_VERIFIED')
 
                 payload= {"hub.challenge": challenge}
-                
-                return func.HttpResponse(json.dumps(payload), mimetype="application/json", status_code=200)
-            else:
-                return func.HttpResponse(status_code=403)
-    elif (mode == 'POST'):
+
+                return func.HttpResponse(json.dumps(payload),
+                                        mimetype="application/json",
+                                        status_code=200)
+
+            return func.HttpResponse(status_code=403)
+
+    elif mode == 'POST':
         logging.info("Running POST Method...")
         eventdata = req.get_json()
-        
-        logging.info("Event Data:" + str(eventdata))
+
+        logging.info("Event Data: %s", str(eventdata))
 
         # Identify the type of event
         aspectType = eventdata.get('aspect_type')
@@ -51,17 +57,17 @@ def main(req: func.HttpRequest, msg: func.Out[func.QueueMessage]) -> func.HttpRe
             try:
                 msg.set(str(eventid))
 
-                logging.info("Queue started: " + str(eventid))
+                logging.info("Queue started: %s", str(eventid))
 
-                return func.HttpResponse(status_code=200) 
-            except Exception as e:
+                return func.HttpResponse(status_code=200)
+            except Exception as e: #pylint: disable=broad-except
+                logging.exception(e)
                 return func.HttpResponse(status_code=500)
         else:
             # Just confirm the webhook
             logging.info("No new activity - nothing to do! :-)")
             return func.HttpResponse(status_code=200)
 
-    else:
-        logging.info("Unsupported Method...") 
-        return func.HttpResponse("Not allowed", status_code=403)            
-
+    #else:
+    logging.info("Unsupported Method...")
+    return func.HttpResponse("Not allowed", status_code=403)
