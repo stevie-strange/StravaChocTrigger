@@ -112,11 +112,7 @@ def main(msg: func.QueueMessage) -> None:
 
     logging.info('Reading activity data...')
 
-    # Get single activity
-    #base_url='https://www.strava.com/api/v3/activities/'
-
     activity_id = msg.get_body().decode('utf-8')
-    #payload = {'access_token': access_token}
     response = requests.get(BASE_URL+activity_id, params={'access_token': access_token})
 
     # Check return code and proceed
@@ -125,11 +121,7 @@ def main(msg: func.QueueMessage) -> None:
 
     data=response.json()
 
-    # Extract activity type
-    #activity_type = data.get('type')
-
     # Only process defined activity types
-    #if activity_type == 'Ride' or activity_type == 'VirtualRide':
     if data.get('type') in ('Ride', 'VirtualRide'):
 
         # Get activity duration
@@ -137,7 +129,6 @@ def main(msg: func.QueueMessage) -> None:
 
         logging.info("Load power data of activity...")
         # Get power data stream for 1 activity based on time domain
-        #url = BASE_URL + activity_id + '/streams'
         payload = {'access_token': access_token,
                     'keys': 'watts',
                     'key_by_type': 'true',
@@ -152,16 +143,9 @@ def main(msg: func.QueueMessage) -> None:
 
             # Data processing - Reading the watt stream.
             logging.info("Extracting power data...")
-           # for element in activity_data:
-           #     if element == 'watts':
-           #         watt_data = activity_data[element]
-           #         for element2 in watt_data:
-           #             if element2 == 'data':
-           #                 watt_numbers = watt_data[element2]
 
             watt_data = activity_data.get('watts')
             watt_numbers = watt_data.get('data')
-            #watt_numbers = activity_data.get('watts').get('data')
 
             # Calculation of CHO consumption
             logging.info("Calculating CHO consumption...")
@@ -204,8 +188,6 @@ def main(msg: func.QueueMessage) -> None:
             logging.info("CHO calculation finished. Updating strava activity...")
 
             # Update description of Strava activity
-            #url = BASE_URL + activity_id
-            #payload = {'access_token': access_token}
             body = {'description': 'Total carbohydrates burned (g): '
                         + str(round(total_cho))
                         + '\nCarbohydrates burned per hour (g): '
