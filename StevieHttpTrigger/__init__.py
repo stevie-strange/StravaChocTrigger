@@ -6,7 +6,9 @@ import os
 import azure.functions as func
 
 
-def main(req: func.HttpRequest, msg: func.Out[func.QueueMessage]) -> func.HttpResponse:
+def main(req: func.HttpRequest,
+        msgstatus: func.Out[str],
+        msg: func.Out[func.QueueMessage])-> func.HttpResponse:
     """Main function of the HTTPTrigger Function"""
 
     logging.info('Python HTTP trigger function processed a request.')
@@ -54,8 +56,18 @@ def main(req: func.HttpRequest, msg: func.Out[func.QueueMessage]) -> func.HttpRe
         if (aspectType == 'create' and objectType == 'activity'):
             logging.info("New activity detected.")
 
+            # check azure table if eventid is already stored, means queue is already triggered.
+            # If not stored yet, write eventif to azure table
+            # and start the queue.
             try:
                 msg.set(str(eventid))
+
+                # TEST ENTRY FOR TABLE CONNECTION
+                rowkey = str(eventid)
+                data = {"Name": "Output message",
+                        "PartitionKey": "message",
+                        "RowKey": rowkey}
+                msgstatus.set(json.dumps(data))
 
                 logging.info("Queue started: %s", str(eventid))
 
