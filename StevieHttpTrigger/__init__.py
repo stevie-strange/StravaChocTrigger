@@ -72,7 +72,7 @@ def main(req: func.HttpRequest,
                 client = SecretClient(vault_url=key_vault_uri, credential=credential)
 
                 # Get connection string from key vault
-                connection_string = client.get_secret("StravaConString")
+                connection_string = client.get_secret("StravaConString").value
                 table_client = TableClient.from_connection_string(conn_str=connection_string,
                                                                     table_name="status")
 
