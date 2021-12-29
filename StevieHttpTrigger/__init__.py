@@ -4,6 +4,10 @@ import json
 import os
 
 import azure.functions as func
+from azure.keyvault.secrets import SecretClient
+from azure.identity import DefaultAzureCredential
+from azure.data.tables import TableClient
+from azure.core.exceptions import ResourceExistsError
 
 
 def main(req: func.HttpRequest,
@@ -60,18 +64,37 @@ def main(req: func.HttpRequest,
             # If not stored yet, write eventif to azure table
             # and start the queue.
             try:
-                msg.set(str(eventid))
 
-                # TEST ENTRY FOR TABLE CONNECTION
-                rowkey = str(eventid)
+                # Prepare access to key vault
+                key_vault_name = os.getenv('StravaKeyVault')
+                key_vault_uri = f"https://{key_vault_name}.vault.azure.net"
+                credential = DefaultAzureCredential()
+                client = SecretClient(vault_url=key_vault_uri, credential=credential)
+
+                # Get connection string from key vault
+                connection_string = client.get_secret("StravaConString")
+                table_client = TableClient.from_connection_string(conn_str=connection_string,
+                                                                    table_name="status")
+
+                #rowkey = str(eventid)
                 data = {"Name": "Output message",
                         "PartitionKey": "message",
-                        "RowKey": rowkey}
-                msgstatus.set(json.dumps(data))
+                        "RowKey": str(eventid)}
+
+                # Insert new activity id into table
+                table_client.create_entity(entity=data)
+
+                # Start queue trigger
+                msg.set(str(eventid))
 
                 logging.info("Queue started: %s", str(eventid))
 
                 return func.HttpResponse(status_code=200)
+
+            except ResourceExistsError:
+                logging.info("Processing already done for activity: %s", str(eventid))
+                return func.HttpResponse(status_code=200)
+
             except Exception as e: #pylint: disable=broad-except
                 logging.exception(e)
                 return func.HttpResponse(status_code=500)
