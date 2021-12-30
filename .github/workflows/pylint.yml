@@ -1,6 +1,11 @@
 name: Pylint
 
-on: [push]
+on:
+  # run pylint on any  code changes except to the main branch.
+  # main branch covered by different workflow.
+  push:
+    paths-ignore:
+      - 'main'
 
 jobs:
   build:
