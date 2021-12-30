@@ -10,8 +10,19 @@ from azure.data.tables import TableClient
 from azure.core.exceptions import ResourceExistsError
 
 
+def init_key_vault():
+    """Helper function to get access to Azure KeyVault"""
+
+    # Prepare access to key vault
+    key_vault_name = os.getenv('StravaKeyVault')
+    key_vault_uri = f"https://{key_vault_name}.vault.azure.net"
+    credential = DefaultAzureCredential()
+    client = SecretClient(vault_url=key_vault_uri, credential=credential)
+
+    return client
+
+
 def main(req: func.HttpRequest,
-        msgstatus: func.Out[str],
         msg: func.Out[func.QueueMessage])-> func.HttpResponse:
     """Main function of the HTTPTrigger Function"""
 
@@ -23,28 +34,22 @@ def main(req: func.HttpRequest,
     if mode == 'GET':
         logging.info("Running GET Method...")
 
-        # Verify token from Key Vault Access
-        VERIFY_TOKEN = os.getenv('StravaVerifyToken')
-
         # Extracting the parameters
         hubmode = req.params.get('hub.mode')
         token = req.params.get('hub.verify_token')
-        challenge = req.params.get('hub.challenge')
 
         logging.info("Parameters extracted")
 
         if (hubmode and token):
 
-            if (hubmode == 'subscribe' and token == VERIFY_TOKEN):
+            if (hubmode == 'subscribe' and token == os.getenv('StravaVerifyToken')):
                 logging.info('WEBHOOK_VERIFIED')
 
-                payload= {"hub.challenge": challenge}
+                payload= {"hub.challenge": req.params.get('hub.challenge')}
 
                 return func.HttpResponse(json.dumps(payload),
                                         mimetype="application/json",
                                         status_code=200)
-
-            return func.HttpResponse(status_code=403)
 
     elif mode == 'POST':
         logging.info("Running POST Method...")
@@ -55,7 +60,6 @@ def main(req: func.HttpRequest,
         # Identify the type of event
         aspectType = eventdata.get('aspect_type')
         objectType = eventdata.get('object_type')
-        eventid = eventdata.get('object_id')
 
         if (aspectType == 'create' and objectType == 'activity'):
             logging.info("New activity detected.")
@@ -66,17 +70,16 @@ def main(req: func.HttpRequest,
             try:
 
                 # Prepare access to key vault
-                key_vault_name = os.getenv('StravaKeyVault')
-                key_vault_uri = f"https://{key_vault_name}.vault.azure.net"
-                credential = DefaultAzureCredential()
-                client = SecretClient(vault_url=key_vault_uri, credential=credential)
+                vault_client = init_key_vault()
 
                 # Get connection string from key vault
-                connection_string = client.get_secret("StravaConString").value
+                connection_string = vault_client.get_secret("StravaConString").value
                 table_client = TableClient.from_connection_string(conn_str=connection_string,
                                                                     table_name="status")
 
-                #rowkey = str(eventid)
+                # Get event id
+                eventid = eventdata.get('object_id')
+
                 data = {"Name": "Output message",
                         "PartitionKey": "message",
                         "RowKey": str(eventid)}
@@ -103,6 +106,5 @@ def main(req: func.HttpRequest,
             logging.info("No new activity - nothing to do! :-)")
             return func.HttpResponse(status_code=200)
 
-    #else:
     logging.info("Unsupported Method...")
     return func.HttpResponse("Not allowed", status_code=403)

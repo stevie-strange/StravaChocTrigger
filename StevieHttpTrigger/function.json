@@ -22,14 +22,6 @@
       "name": "msg",
       "queueName": "processing",
       "connection": "MyStorageConnectionAppSetting"
-    },
-    {
-      "type": "table",
-      "direction": "out",
-      "name": "msgstatus",
-      "tableName": "status",
-      "partitionKey": "message",
-      "connection": "MyStorageConnectionAppSetting"
     }
   ]
 }
