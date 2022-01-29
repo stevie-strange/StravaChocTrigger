@@ -5,6 +5,7 @@ import time
 import requests
 
 import azure.functions as func
+import numpy as np
 from azure.keyvault.secrets import SecretClient
 from azure.identity import DefaultAzureCredential
 from requests.models import Response
@@ -23,6 +24,18 @@ F2_INTERCEPT = 91
 
 # Base Strava URL for activities
 BASE_URL ='https://www.strava.com/api/v3/activities/'
+
+
+
+def calc_cho(power):
+    """function to calculate CHO consumption based on e function"""
+    cho = 0
+    for x in power:
+        # CHO consumption is 0 beyond that wattage
+        #if x < 275:
+        cho = cho + (16.4 * np.exp(-0.009753 * x) + 6.5145)
+
+    return cho
 
 
 def calculate_cho(slope, intercept, power, cho_list):
@@ -151,38 +164,38 @@ def main(msg: func.QueueMessage) -> None:
             logging.info("Calculating CHO consumption...")
 
             # Reset CHO count
-            total_cho = 0
+            total_cho = calc_cho(watt_numbers)
 
             # List of all CHO values calculated
-            cho_values = []
+            #cho_values = []
 
-            for power in watt_numbers:
-                # Reset power
-                current_power = 0
+            # for power in watt_numbers:
+            #     # Reset power
+            #     current_power = 0
 
-                # Extract the current power value
-                current_power = power
+            #     # Extract the current power value
+            #     current_power = power
 
-                # validate the power information
-                if current_power is not None:
+            #     # validate the power information
+            #     if current_power is not None:
 
-                    # if the power value is below the threshold value apply the first formula
-                    if current_power <= CURVE_THRESHOLD:
+            #         # if the power value is below the threshold value apply the first formula
+            #         if current_power <= CURVE_THRESHOLD:
 
-                        # call function with linear function 1
-                        total_cho = total_cho + calculate_cho(F1_SLOPE,
-                                                            F1_INTERCEPT,
-                                                            current_power,
-                                                            cho_values)
+            #             # call function with linear function 1
+            #             total_cho = total_cho + calculate_cho(F1_SLOPE,
+            #                                                 F1_INTERCEPT,
+            #                                                 current_power,
+            #                                                 cho_values)
 
-                        # Since the power value is above the threshold use the second formula
-                    else:
+            #             # Since the power value is above the threshold use the second formula
+            #         else:
 
-                        # call function with linear function 2
-                        total_cho = total_cho + calculate_cho(F2_SLOPE,
-                                                            F2_INTERCEPT,
-                                                            current_power,
-                                                            cho_values)
+            #             # call function with linear function 2
+            #             total_cho = total_cho + calculate_cho(F2_SLOPE,
+            #                                                 F2_INTERCEPT,
+            #                                                 current_power,
+            #                                                 cho_values)
 
             # Inform user about the results
             logging.info("CHO calculation finished. Updating strava activity...")
