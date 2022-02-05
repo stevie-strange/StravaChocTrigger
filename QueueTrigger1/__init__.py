@@ -33,7 +33,14 @@ def calc_cho(power):
     for x in power:
         # CHO consumption is 0 beyond that wattage
         #if x < 275:
-        cho = cho + (16.4 * np.exp(-0.009753 * x) + 6.5145)
+        # calculate CHO consumption in grams per hour
+        y = (16.4 * np.exp(-0.009753 * x) + 6.5145)
+
+        # Scale result down to recording interval of 1s
+        y = y/60/60
+
+        # Add value to the total consumption
+        cho = cho + y
 
     return cho
 
