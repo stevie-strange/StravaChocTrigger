@@ -29,18 +29,23 @@ BASE_URL ='https://www.strava.com/api/v3/activities/'
 
 def calc_cho(power):
     """function to calculate CHO consumption based on e function"""
+
+    # reset CHO counter
     cho = 0
+
+    # process the complete array
     for x in power:
         # CHO consumption is 0 beyond that wattage
         #if x < 275:
-        # calculate CHO consumption in grams per hour
-        y = (16.4 * np.exp(-0.009753 * x) + 6.5145)
+        if x is not None:
+            # calculate CHO consumption in grams per hour
+            y = (16.4082248903284 * np.exp(0.009753356363022837 * x) + 6.514511413977633)
 
-        # Scale result down to recording interval of 1s
-        y = y/60/60
+            # Scale result down to recording interval of 1s
+            y = y/60/60
 
-        # Add value to the total consumption
-        cho = cho + y
+             # Add value to the total consumption
+            cho = cho + y
 
     return cho
 
