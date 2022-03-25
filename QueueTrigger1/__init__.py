@@ -50,6 +50,29 @@ def calc_cho(power):
     return cho
 
 
+# Calculate fat consumption based on the power
+def calculate_fat(power):
+    """function to calculate the fat consumption"""
+
+    # reset fat counter
+    fat = 0
+
+    # process the complete array
+    for x in power:
+        if x is not None and x > 0:
+            # calculate fat consumption in grams per hour
+            y = -0.001365079365079365 * np.square(x) + 0.34968253968253976 * x + 11.94444444444439
+
+
+            # Scale result down to recording interval of 1s
+            y = y/60/60
+
+            # Add value to the total consumption
+            fat = fat + y
+
+    return fat
+
+
 def calculate_cho(slope, intercept, power, cho_list):
     """function to calculate the CHO consumption"""
 
@@ -178,6 +201,11 @@ def main(msg: func.QueueMessage) -> None:
             # Reset CHO count
             total_cho = calc_cho(watt_numbers)
 
+            # Calculate fat consumption
+            logging.info("Calculating fat consumption...")
+
+            total_fat = calculate_fat(watt_numbers)
+
             # List of all CHO values calculated
             #cho_values = []
 
@@ -215,8 +243,14 @@ def main(msg: func.QueueMessage) -> None:
             # Update description of Strava activity
             body = {'description': 'Total carbohydrates burned (g): '
                         + str(round(total_cho))
+                        + ' kcal:'
+                        + str(round(total_cho*4.184))
                         + '\nCarbohydrates burned per hour (g): '
-                        + str(round(total_cho / activity_duration * 60 * 60))}
+                        + str(round(total_cho / activity_duration * 60 * 60))
+                        + 'Total fat burned (g): '
+                        + str(round(total_fat))
+                        + ' kcal:'
+                        + str(round(total_fat*9))}
 
             response = requests.put(BASE_URL+activity_id,
                                 params={'access_token': access_token},
