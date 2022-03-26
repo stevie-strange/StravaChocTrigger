@@ -243,14 +243,16 @@ def main(msg: func.QueueMessage) -> None:
             # Update description of Strava activity
             body = {'description': 'Total carbohydrates burned (g): '
                         + str(round(total_cho))
-                        + ' kcal:'
+                        + ' kcal: '
                         + str(round(total_cho*4.184))
                         + '\nCarbohydrates burned per hour (g): '
                         + str(round(total_cho / activity_duration * 60 * 60))
-                        + 'Total fat burned (g): '
+                        + '\nTotal fat burned (g): '
                         + str(round(total_fat))
-                        + ' kcal:'
-                        + str(round(total_fat*9))}
+                        + ' kcal: '
+                        + str(round(total_fat*9))
+                        + '\nFat burned per hour (g): '
+                        + str(round(total_fat / activity_duration * 60 * 60))}
 
             response = requests.put(BASE_URL+activity_id,
                                 params={'access_token': access_token},
