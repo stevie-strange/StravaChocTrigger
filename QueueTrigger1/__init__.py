@@ -39,7 +39,7 @@ def calc_cho(power):
         #if x < 275:
         if x is not None:
             # calculate CHO consumption in grams per hour
-            y = (16.4082248903284 * np.exp(0.009753356363022837 * x) + 6.514511413977633)
+            y= 24.4817243 - 0.358447879 * x + 0.00708969851 * x**2 - 0.00000982862627 * x**3
 
             # Scale result down to recording interval of 1s
             y = y/60/60
@@ -61,9 +61,8 @@ def calculate_fat(power):
     for x in power:
         if x is not None and x > 0:
             # calculate fat consumption in grams per hour
-            y = -0.001365079365079365 * np.square(x) + 0.34968253968253976 * x + 11.94444444444439
-
-
+            y = 9.92211011 + 0.20866082 * x - 0.0000796973456 * x**2 - 0.00000305255098 * x**3
+            
             # Scale result down to recording interval of 1s
             y = y/60/60
 
