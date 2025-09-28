@@ -62,7 +62,7 @@ def calculate_fat(power):
         if x is not None and x > 0:
             # calculate fat consumption in grams per hour
             y = 9.92211011 + 0.20866082 * x - 0.0000796973456 * x**2 - 0.00000305255098 * x**3
-            
+
             # Scale result down to recording interval of 1s
             y = y/60/60
 
@@ -120,7 +120,8 @@ def get_access_token():
                'client_secret': os.getenv('StravaClientSecret'),
                 'refresh_token': client.get_secret("StravaRefreshToken").value,
                 'grant_type': 'refresh_token'
-            }
+            },
+            timeout=(3, 10) # (connect timeout, read timeout)
         )
 
         # proceed if request was successfull
@@ -160,8 +161,9 @@ def main(msg: func.QueueMessage) -> None:
     logging.info('Reading activity data...')
 
     activity_id = msg.get_body().decode('utf-8')
-    response = requests.get(BASE_URL+activity_id, params={'access_token': access_token})
-
+    response = requests.get(BASE_URL+activity_id,
+                            params={'access_token': access_token},
+                            timeout=(3, 10))
     # Check return code and proceed
     if response.status_code != requests.codes.ok: #pylint: disable=no-member
         response.raise_for_status()
@@ -180,13 +182,10 @@ def main(msg: func.QueueMessage) -> None:
                     'keys': 'watts',
                     'key_by_type': 'true',
                     'series_type': 'time'}
-
-        response = requests.get(BASE_URL+activity_id+'/streams', params=payload)
-
-        # Check return code and proceed
+        response = requests.get(BASE_URL+activity_id+'/streams', params=payload, timeout=(3, 10))
+            # Check return code and proceed
         if response.status_code == requests.codes.ok: #pylint: disable=no-member
-
-            activity_data=response.json()
+            activity_data = response.json()
 
             # Data processing - Reading the watt stream.
             logging.info("Extracting power data...")
@@ -225,9 +224,6 @@ def main(msg: func.QueueMessage) -> None:
             #             total_cho = total_cho + calculate_cho(F1_SLOPE,
             #                                                 F1_INTERCEPT,
             #                                                 current_power,
-            #                                                 cho_values)
-
-            #             # Since the power value is above the threshold use the second formula
             #         else:
 
             #             # call function with linear function 2
@@ -254,8 +250,10 @@ def main(msg: func.QueueMessage) -> None:
                         + str(round(total_fat / activity_duration * 60 * 60))}
 
             response = requests.put(BASE_URL+activity_id,
-                                params={'access_token': access_token},
-                                data=body)
+                params={'access_token': access_token},
+                data=body,
+                timeout=(3, 10))
+
             if response.status_code != requests.codes.ok: #pylint: disable=no-member
                 response.raise_for_status()
 
@@ -266,3 +264,4 @@ def main(msg: func.QueueMessage) -> None:
 
     else:
         logging.info("Unsupported activity type. Processing terminated")
+
