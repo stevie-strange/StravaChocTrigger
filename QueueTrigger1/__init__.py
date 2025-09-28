@@ -224,10 +224,6 @@ def main(msg: func.QueueMessage) -> None:
             #             total_cho = total_cho + calculate_cho(F1_SLOPE,
             #                                                 F1_INTERCEPT,
             #                                                 current_power,
-            response = requests.put(BASE_URL+activity_id,
-                            params={'access_token': access_token},
-                            data=body,
-                            timeout=(3, 10))
             #         else:
 
             #             # call function with linear function 2
@@ -268,3 +264,4 @@ def main(msg: func.QueueMessage) -> None:
 
     else:
         logging.info("Unsupported activity type. Processing terminated")
+
