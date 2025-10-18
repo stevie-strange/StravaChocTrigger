@@ -184,15 +184,17 @@ def main(msg: func.QueueMessage) -> None:
 
         logging.info("Load power data of activity...")
         # Get power data stream for 1 activity based on time domain
-        payload = {'access_token': access_token,
-                   'keys': 'watts',
-                   'key_by_type': 'true',
-                   'series_type': 'time'}
-        activity_data = _fetch_json(BASE_URL + activity_id + '/streams',
-                                   params=payload,
-                                   timeout=(3, 10))
-        
-    # Data processing - Reading the watt stream
+        payload = {
+            'access_token': access_token,
+            'keys': 'watts',
+            'key_by_type': 'true',
+            'series_type': 'time',
+        }
+        activity_data = _fetch_json(
+            BASE_URL + activity_id + '/streams', params=payload, timeout=(3, 10)
+        )
+
+        # Data processing - Reading the watt stream
         logging.info("Extracting power data...")
 
         watt_data = activity_data.get('watts')
