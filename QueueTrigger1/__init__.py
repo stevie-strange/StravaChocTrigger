@@ -1,9 +1,8 @@
-"""main file for the queue trigger""" #pylint: disable=invalid-name
+"""main file for the queue trigger""" #pylint: disable=invalid-name,C0305
 import logging
 import os
 import time
 import requests
-
 import azure.functions as func
 import numpy as np
 from azure.keyvault.secrets import SecretClient
@@ -258,9 +257,11 @@ def main(msg: func.QueueMessage) -> None:
                 response.raise_for_status()
 
             # Inform user about the results
+
             logging.info("Strava activity updated. Processing has finished.")
         else:
             response.raise_for_status()
+
 
     else:
         logging.info("Unsupported activity type. Processing terminated")
