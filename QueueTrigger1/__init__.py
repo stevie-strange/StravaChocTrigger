@@ -147,6 +147,17 @@ def get_access_token():
     return client.get_secret("StravaAccessToken").value
 
 
+def _fetch_json(url, params=None, timeout=(3, 10)):
+    """Helper to GET a URL, raise on non-200 and return parsed JSON.
+
+    Centralises requests.get + status handling to reduce duplication and
+    make the logic easier to test.
+    """
+    response = requests.get(url, params=params, timeout=timeout)
+    if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+        response.raise_for_status()
+    return response.json()
+
 
 def main(msg: func.QueueMessage) -> None:
     """Main function"""
@@ -160,14 +171,10 @@ def main(msg: func.QueueMessage) -> None:
     logging.info('Reading activity data...')
 
     activity_id = msg.get_body().decode('utf-8')
-    response = requests.get(BASE_URL+activity_id,
-                            params={'access_token': access_token},
-                            timeout=(3, 10))
-    # Check return code and proceed
-    if response.status_code != requests.codes.ok: #pylint: disable=no-member
-        response.raise_for_status()
-
-    data=response.json()
+    # Load activity metadata
+    data = _fetch_json(BASE_URL + activity_id,
+                       params={'access_token': access_token},
+                       timeout=(3, 10))
 
     # Only process defined activity types
     if data.get('type') in ('Ride', 'VirtualRide'):
@@ -178,89 +185,64 @@ def main(msg: func.QueueMessage) -> None:
         logging.info("Load power data of activity...")
         # Get power data stream for 1 activity based on time domain
         payload = {'access_token': access_token,
-                    'keys': 'watts',
-                    'key_by_type': 'true',
-                    'series_type': 'time'}
-        response = requests.get(BASE_URL+activity_id+'/streams', params=payload, timeout=(3, 10))
-            # Check return code and proceed
-        if response.status_code == requests.codes.ok: #pylint: disable=no-member
-            activity_data = response.json()
+                   'keys': 'watts',
+                   'key_by_type': 'true',
+                   'series_type': 'time'}
+        activity_data = _fetch_json(BASE_URL + activity_id + '/streams',
+                                   params=payload,
+                                   timeout=(3, 10))
+        
+        # Data processing - Reading the watt stream
+        logging.info("Extracting power data...")
 
-            # Data processing - Reading the watt stream.
-            logging.info("Extracting power data...")
+        watt_data = activity_data.get('watts')
+        watt_numbers = watt_data.get('data')
 
-            watt_data = activity_data.get('watts')
-            watt_numbers = watt_data.get('data')
+        # Calculation of CHO consumption
+        logging.info("Calculating CHO consumption...")
 
-            # Calculation of CHO consumption
-            logging.info("Calculating CHO consumption...")
+        # Reset CHO count
+        total_cho = calc_cho(watt_numbers)
 
-            # Reset CHO count
-            total_cho = calc_cho(watt_numbers)
+        # Calculate fat consumption
+        logging.info("Calculating fat consumption...")
 
-            # Calculate fat consumption
-            logging.info("Calculating fat consumption...")
+        total_fat = calculate_fat(watt_numbers)
 
-            total_fat = calculate_fat(watt_numbers)
+        # List of all CHO values calculated (legacy linear-method commented out)
+        # Inform user about the results
+        logging.info("CHO calculation finished. Updating strava activity...")
 
-            # List of all CHO values calculated
-            #cho_values = []
+        # Update description of Strava activity
+        body = {
+            'description': (
+                'Total carbohydrates burned (g): '
+                + str(round(total_cho))
+                + ' kcal: '
+                + str(round(total_cho * 4.184))
+                + '\nCarbohydrates burned per hour (g): '
+                + str(round(total_cho / activity_duration * 60 * 60))
+                + '\nTotal fat burned (g): '
+                + str(round(total_fat))
+                + ' kcal: '
+                + str(round(total_fat * 9))
+                + '\nFat burned per hour (g): '
+                + str(round(total_fat / activity_duration * 60 * 60))
+            )
+        }
 
-            # for power in watt_numbers:
-            #     # Reset power
-            #     current_power = 0
+        response = requests.put(
+            BASE_URL + activity_id,
+            params={'access_token': access_token},
+            data=body,
+            timeout=(3, 10),
+        )
 
-            #     # Extract the current power value
-            #     current_power = power
-
-            #     # validate the power information
-            #     if current_power is not None:
-
-            #         # if the power value is below the threshold value apply the first formula
-            #         if current_power <= CURVE_THRESHOLD:
-
-            #             # call function with linear function 1
-            #             total_cho = total_cho + calculate_cho(F1_SLOPE,
-            #                                                 F1_INTERCEPT,
-            #                                                 current_power,
-            #         else:
-
-            #             # call function with linear function 2
-            #             total_cho = total_cho + calculate_cho(F2_SLOPE,
-            #                                                 F2_INTERCEPT,
-            #                                                 current_power,
-            #                                                 cho_values)
-
-            # Inform user about the results
-            logging.info("CHO calculation finished. Updating strava activity...")
-
-            # Update description of Strava activity
-            body = {'description': 'Total carbohydrates burned (g): '
-                        + str(round(total_cho))
-                        + ' kcal: '
-                        + str(round(total_cho*4.184))
-                        + '\nCarbohydrates burned per hour (g): '
-                        + str(round(total_cho / activity_duration * 60 * 60))
-                        + '\nTotal fat burned (g): '
-                        + str(round(total_fat))
-                        + ' kcal: '
-                        + str(round(total_fat*9))
-                        + '\nFat burned per hour (g): '
-                        + str(round(total_fat / activity_duration * 60 * 60))}
-
-            response = requests.put(BASE_URL+activity_id,
-                params={'access_token': access_token},
-                data=body,
-                timeout=(3, 10))
-
-            if response.status_code != requests.codes.ok: #pylint: disable=no-member
-                response.raise_for_status()
-
-            # Inform user about the results
-
-            logging.info("Strava activity updated. Processing has finished.")
-        else:
+        if response.status_code != requests.codes.ok:  # pylint: disable=no-member
             response.raise_for_status()
+
+        # Inform user about the results
+        logging.info("Strava activity updated. Processing has finished.")
 
 
     else:

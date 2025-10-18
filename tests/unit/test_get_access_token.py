@@ -32,8 +32,9 @@ def test_get_access_token_not_expired(monkeypatch):
     fake = FakeClient({'StravaTokenExpires': future_ts, 'StravaAccessToken': 'existing_token'})
 
     # Patch the module-level SecretClient and credential class
-    monkeypatch.setattr('QueueTrigger1.__init__.SecretClient', lambda vault_url, credential: fake)
-    monkeypatch.setattr('QueueTrigger1.__init__.DefaultAzureCredential', lambda: None)
+    import QueueTrigger1.__init__ as qtmod
+    monkeypatch.setattr(qtmod, 'SecretClient', lambda vault_url, credential: fake)
+    monkeypatch.setattr(qtmod, 'DefaultAzureCredential', lambda: None)
 
     # Import lazily and call
     from QueueTrigger1.__init__ import get_access_token
@@ -62,9 +63,10 @@ def test_get_access_token_refresh(monkeypatch):
         assert 'refresh_token' in data
         return FakeResp()
 
-    monkeypatch.setattr('QueueTrigger1.__init__.SecretClient', lambda vault_url, credential: fake)
-    monkeypatch.setattr('QueueTrigger1.__init__.DefaultAzureCredential', lambda: None)
-    monkeypatch.setattr('QueueTrigger1.__init__.requests.post', fake_post)
+    import QueueTrigger1.__init__ as qtmod
+    monkeypatch.setattr(qtmod, 'SecretClient', lambda vault_url, credential: fake)
+    monkeypatch.setattr(qtmod, 'DefaultAzureCredential', lambda: None)
+    monkeypatch.setattr(qtmod.requests, 'post', fake_post)
 
     from QueueTrigger1.__init__ import get_access_token
     token = get_access_token()
