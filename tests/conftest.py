@@ -114,7 +114,64 @@ core_ex_mod.ResourceExistsError = ResourceExistsError
 
 # Insert modules into sys.modules so production imports succeed
 sys.modules['azure'] = types.ModuleType('azure')
-sys.modules['azure.functions'] = types.ModuleType('azure.functions')
+azure_funcs_mod = types.ModuleType('azure.functions')
+
+
+# Lightweight azure.functions shim used by tests. It provides minimal
+# classes and annotations used by the production modules so imports don't
+# fail when the real Azure Functions package isn't installed.
+class HttpRequest:
+    """Minimal HttpRequest shim."""
+
+    def __init__(self, method='GET', params=None, json_body=None):
+        self.method = method
+        self.params = params or {}
+        self._json = json_body
+
+    def get_json(self):
+        return self._json
+
+
+class HttpResponse:
+    """Minimal HttpResponse shim."""
+
+    def __init__(self, body=None, status_code=200, mimetype=None):
+        self.body = body
+        self.status_code = status_code
+        self.mimetype = mimetype
+
+
+class QueueMessage:
+    """Minimal QueueMessage shim."""
+
+    def __init__(self, body: bytes | str):
+        if isinstance(body, str):
+            body = body.encode('utf-8')
+        self._body = body
+
+    def get_body(self):
+        return self._body
+
+
+class Out:
+    """Minimal Out shim supporting typed subscription via __class_getitem__."""
+
+    def __init__(self):
+        self._set = Mock()
+
+    def set(self, value):
+        self._set(value)
+
+    @classmethod
+    def __class_getitem__(cls, item):
+        return cls
+
+
+azure_funcs_mod.HttpRequest = HttpRequest
+azure_funcs_mod.HttpResponse = HttpResponse
+azure_funcs_mod.QueueMessage = QueueMessage
+azure_funcs_mod.Out = Out
+sys.modules['azure.functions'] = azure_funcs_mod
 sys.modules['azure.keyvault.secrets'] = keyvault_secrets_mod
 sys.modules['azure.identity'] = identity_mod
 sys.modules['azure.data.tables'] = data_tables_mod
