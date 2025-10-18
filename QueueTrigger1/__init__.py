@@ -159,6 +159,28 @@ def _fetch_json(url, params=None, timeout=(3, 10)):
     return response.json()
 
 
+def build_description(total_cho: float, total_fat: float, activity_duration: float) -> str:
+    """Build the Strava activity description text.
+
+    This is a pure, unit-testable helper that formats the calculated
+    nutrition metrics into the string uploaded to Strava.
+    """
+    return (
+        'Total carbohydrates burned (g): '
+        + str(round(total_cho))
+        + ' kcal: '
+        + str(round(total_cho * 4.184))
+        + '\nCarbohydrates burned per hour (g): '
+        + str(round(total_cho / activity_duration * 60 * 60))
+        + '\nTotal fat burned (g): '
+        + str(round(total_fat))
+        + ' kcal: '
+        + str(round(total_fat * 9))
+        + '\nFat burned per hour (g): '
+        + str(round(total_fat / activity_duration * 60 * 60))
+    )
+
+
 def main(msg: func.QueueMessage) -> None:
     """Main function"""
 
@@ -216,22 +238,7 @@ def main(msg: func.QueueMessage) -> None:
         logging.info("CHO calculation finished. Updating strava activity...")
 
         # Update description of Strava activity
-        body = {
-            'description': (
-                'Total carbohydrates burned (g): '
-                + str(round(total_cho))
-                + ' kcal: '
-                + str(round(total_cho * 4.184))
-                + '\nCarbohydrates burned per hour (g): '
-                + str(round(total_cho / activity_duration * 60 * 60))
-                + '\nTotal fat burned (g): '
-                + str(round(total_fat))
-                + ' kcal: '
-                + str(round(total_fat * 9))
-                + '\nFat burned per hour (g): '
-                + str(round(total_fat / activity_duration * 60 * 60))
-            )
-        }
+        body = {'description': build_description(total_cho, total_fat, activity_duration)}
 
         response = requests.put(
             BASE_URL + activity_id,
