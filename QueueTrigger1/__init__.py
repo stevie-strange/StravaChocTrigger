@@ -1,7 +1,9 @@
 """main file for the queue trigger""" #pylint: disable=invalid-name,C0305
 import logging
+import math
 import os
 import time
+
 import requests
 import azure.functions as func
 import numpy as np
@@ -184,7 +186,7 @@ def build_description(total_cho: float, total_fat: float, activity_duration: flo
     per_hour_fat = 'n/a'
     try:
         dur = float(activity_duration)
-        if dur > 0 and not (dur != dur or dur == float('inf')):  # exclude NaN and inf
+        if dur > 0 and math.isfinite(dur):
             per_hour_cho = str(round(total_cho / dur * 60 * 60))
             per_hour_fat = str(round(total_fat / dur * 60 * 60))
     except (TypeError, ValueError):

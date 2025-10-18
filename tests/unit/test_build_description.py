@@ -41,8 +41,6 @@ def test_build_description_zero_duration():
 
 
 def test_build_description_nan_inf():
-    import math
-
     desc_nan = build_description(100, 50, math.nan)
     assert 'n/a' in desc_nan
 
