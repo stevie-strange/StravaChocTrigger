@@ -32,3 +32,24 @@ def test_build_description_division():
     # carbohydrates per hour = total_cho / activity_duration * 3600 -> (3600/7200*3600)=1800
     assert str(round(total_cho / activity_duration * 60 * 60)) in desc
     assert str(round(total_fat / activity_duration * 60 * 60)) in desc
+
+
+def test_build_description_zero_duration():
+    desc = build_description(100, 50, 0)
+    assert 'n/a' in desc
+    assert 'Carbohydrates burned per hour' in desc
+
+
+def test_build_description_nan_inf():
+    import math
+
+    desc_nan = build_description(100, 50, math.nan)
+    assert 'n/a' in desc_nan
+
+    desc_inf = build_description(100, 50, math.inf)
+    assert 'n/a' in desc_inf
+
+
+def test_build_description_invalid_numbers():
+    desc = build_description('not-a-num', None, 3600)
+    assert 'n/a' in desc

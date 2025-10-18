@@ -164,20 +164,49 @@ def build_description(total_cho: float, total_fat: float, activity_duration: flo
 
     This is a pure, unit-testable helper that formats the calculated
     nutrition metrics into the string uploaded to Strava.
+
+    It defensively handles invalid activity_duration (<=0, NaN, inf) by
+    returning 'n/a' for per-hour fields to avoid ZeroDivisionError.
     """
+    # Normalize numeric inputs
+    try:
+        cho_rounded = round(float(total_cho))
+    except (TypeError, ValueError):
+        cho_rounded = 'n/a'
+
+    try:
+        fat_rounded = round(float(total_fat))
+    except (TypeError, ValueError):
+        fat_rounded = 'n/a'
+
+    # Check duration validity
+    per_hour_cho = 'n/a'
+    per_hour_fat = 'n/a'
+    try:
+        dur = float(activity_duration)
+        if dur > 0 and not (dur != dur or dur == float('inf')):  # exclude NaN and inf
+            per_hour_cho = str(round(total_cho / dur * 60 * 60))
+            per_hour_fat = str(round(total_fat / dur * 60 * 60))
+    except (TypeError, ValueError):
+        # leave as 'n/a'
+        pass
+
+    cho_kcal = 'n/a' if cho_rounded == 'n/a' else str(round(total_cho * 4.184))
+    fat_kcal = 'n/a' if fat_rounded == 'n/a' else str(round(total_fat * 9))
+
     return (
         'Total carbohydrates burned (g): '
-        + str(round(total_cho))
+        + str(cho_rounded)
         + ' kcal: '
-        + str(round(total_cho * 4.184))
+        + cho_kcal
         + '\nCarbohydrates burned per hour (g): '
-        + str(round(total_cho / activity_duration * 60 * 60))
+        + per_hour_cho
         + '\nTotal fat burned (g): '
-        + str(round(total_fat))
+        + str(fat_rounded)
         + ' kcal: '
-        + str(round(total_fat * 9))
+        + fat_kcal
         + '\nFat burned per hour (g): '
-        + str(round(total_fat / activity_duration * 60 * 60))
+        + per_hour_fat
     )
 
 
