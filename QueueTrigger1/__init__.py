@@ -1,7 +1,9 @@
 """main file for the queue trigger""" #pylint: disable=invalid-name,C0305
 import logging
+import math
 import os
 import time
+
 import requests
 import azure.functions as func
 import numpy as np
@@ -159,6 +161,57 @@ def _fetch_json(url, params=None, timeout=(3, 10)):
     return response.json()
 
 
+def build_description(total_cho: float, total_fat: float, activity_duration: float) -> str:
+    """Build the Strava activity description text.
+
+    This is a pure, unit-testable helper that formats the calculated
+    nutrition metrics into the string uploaded to Strava.
+
+    It defensively handles invalid activity_duration (<=0, NaN, inf) by
+    returning 'n/a' for per-hour fields to avoid ZeroDivisionError.
+    """
+    # Normalize numeric inputs
+    try:
+        cho_rounded = round(float(total_cho))
+    except (TypeError, ValueError):
+        cho_rounded = 'n/a'
+
+    try:
+        fat_rounded = round(float(total_fat))
+    except (TypeError, ValueError):
+        fat_rounded = 'n/a'
+
+    # Check duration validity
+    per_hour_cho = 'n/a'
+    per_hour_fat = 'n/a'
+    try:
+        dur = float(activity_duration)
+        if dur > 0 and math.isfinite(dur):
+            per_hour_cho = str(round(total_cho / dur * 60 * 60))
+            per_hour_fat = str(round(total_fat / dur * 60 * 60))
+    except (TypeError, ValueError):
+        # leave as 'n/a'
+        pass
+
+    cho_kcal = 'n/a' if cho_rounded == 'n/a' else str(round(total_cho * 4.184))
+    fat_kcal = 'n/a' if fat_rounded == 'n/a' else str(round(total_fat * 9))
+
+    return (
+        'Total carbohydrates burned (g): '
+        + str(cho_rounded)
+        + ' kcal: '
+        + cho_kcal
+        + '\nCarbohydrates burned per hour (g): '
+        + per_hour_cho
+        + '\nTotal fat burned (g): '
+        + str(fat_rounded)
+        + ' kcal: '
+        + fat_kcal
+        + '\nFat burned per hour (g): '
+        + per_hour_fat
+    )
+
+
 def main(msg: func.QueueMessage) -> None:
     """Main function"""
 
@@ -216,22 +269,7 @@ def main(msg: func.QueueMessage) -> None:
         logging.info("CHO calculation finished. Updating strava activity...")
 
         # Update description of Strava activity
-        body = {
-            'description': (
-                'Total carbohydrates burned (g): '
-                + str(round(total_cho))
-                + ' kcal: '
-                + str(round(total_cho * 4.184))
-                + '\nCarbohydrates burned per hour (g): '
-                + str(round(total_cho / activity_duration * 60 * 60))
-                + '\nTotal fat burned (g): '
-                + str(round(total_fat))
-                + ' kcal: '
-                + str(round(total_fat * 9))
-                + '\nFat burned per hour (g): '
-                + str(round(total_fat / activity_duration * 60 * 60))
-            )
-        }
+        body = {'description': build_description(total_cho, total_fat, activity_duration)}
 
         response = requests.put(
             BASE_URL + activity_id,
