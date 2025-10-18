@@ -3,6 +3,8 @@
 These tests simulate KeyVault secrets and the token refresh HTTP call.
 """
 
+# pylint: disable=missing-function-docstring,missing-class-docstring,too-few-public-methods,import-outside-toplevel,unused-argument
+
 import time
 from unittest.mock import Mock
 

@@ -192,7 +192,7 @@ def main(msg: func.QueueMessage) -> None:
                                    params=payload,
                                    timeout=(3, 10))
         
-        # Data processing - Reading the watt stream
+    # Data processing - Reading the watt stream
         logging.info("Extracting power data...")
 
         watt_data = activity_data.get('watts')
