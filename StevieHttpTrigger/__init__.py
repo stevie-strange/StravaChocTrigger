@@ -40,7 +40,7 @@ def main(req: func.HttpRequest,
 
         logging.info("Parameters extracted")
 
-        if hubmode and token and hubmode == 'subscribe' and token == os.getenv('StravaVerifyToken'):
+        if hubmode == 'subscribe' and token == os.getenv('StravaVerifyToken'):
             logging.info('WEBHOOK_VERIFIED')
 
             payload = {"hub.challenge": req.params.get('hub.challenge')}

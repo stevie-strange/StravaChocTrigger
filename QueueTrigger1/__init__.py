@@ -21,7 +21,8 @@ def calc_cho(power):
     """function to calculate CHO consumption based on e function"""
 
     # Convert to numpy array and filter out None values
-    power_array = np.array([p for p in power if p is not None], dtype=float)
+    power_array = np.array(power, dtype=float)
+    power_array = power_array[~np.isnan(power_array)]
 
     if len(power_array) == 0:
         return 0
@@ -43,7 +44,9 @@ def calculate_fat(power):
     """function to calculate the fat consumption"""
 
     # Convert to numpy array and filter out None and zero/negative values
-    power_array = np.array([p for p in power if p is not None and p > 0], dtype=float)
+    power_array = np.array(power, dtype=float)
+    # Filter out NaN and values <= 0
+    power_array = power_array[~np.isnan(power_array) & (power_array > 0)]
 
     if len(power_array) == 0:
         return 0
