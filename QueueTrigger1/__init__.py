@@ -12,84 +12,55 @@ from azure.identity import DefaultAzureCredential
 from requests.models import Response
 
 ########## CONSTANTS ####################
-# Split point of the 2 linear functions
-CURVE_THRESHOLD = 175
-
-# Slope & intercept of first linear function
-F1_SLOPE = 12.57
-F1_INTERCEPT = 0
-
-# Slope & intercept of second linear function
-F2_SLOPE = 12.06
-F2_INTERCEPT = 91
-
 # Base Strava URL for activities
-BASE_URL ='https://www.strava.com/api/v3/activities/'
+BASE_URL = 'https://www.strava.com/api/v3/activities/'
 
 
 
 def calc_cho(power):
     """function to calculate CHO consumption based on e function"""
 
-    # reset CHO counter
-    cho = 0
+    # Convert to numpy array and filter out None values
+    power_array = np.array(power, dtype=float)
+    power_array = power_array[~np.isnan(power_array)]
 
-    # process the complete array
-    for x in power:
-        # CHO consumption is 0 beyond that wattage
-        #if x < 275:
-        if x is not None:
-            # calculate CHO consumption in grams per hour
-            y= 24.4817243 - 0.358447879 * x + 0.00708969851 * x**2 - 0.00000982862627 * x**3
+    if len(power_array) == 0:
+        return 0
 
-            # Scale result down to recording interval of 1s
-            y = y/60/60
+    # Calculate CHO consumption in grams per hour using vectorized operations
+    cho_per_hour = (24.4817243 - 0.358447879 * power_array +
+                    0.00708969851 * power_array**2 -
+                    0.00000982862627 * power_array**3)
 
-             # Add value to the total consumption
-            cho = cho + y
+    # Scale result down to recording interval of 1s
+    cho_per_second = cho_per_hour / 3600
 
-    return cho
+    # Sum total consumption
+    return np.sum(cho_per_second)
 
 
 # Calculate fat consumption based on the power
 def calculate_fat(power):
     """function to calculate the fat consumption"""
 
-    # reset fat counter
-    fat = 0
+    # Convert to numpy array and filter out None and zero/negative values
+    power_array = np.array(power, dtype=float)
+    # Filter out NaN and values <= 0
+    power_array = power_array[~np.isnan(power_array) & (power_array > 0)]
 
-    # process the complete array
-    for x in power:
-        if x is not None and x > 0:
-            # calculate fat consumption in grams per hour
-            y = 9.92211011 + 0.20866082 * x - 0.0000796973456 * x**2 - 0.00000305255098 * x**3
+    if len(power_array) == 0:
+        return 0
 
-            # Scale result down to recording interval of 1s
-            y = y/60/60
+    # Calculate fat consumption in grams per hour using vectorized operations
+    fat_per_hour = (9.92211011 + 0.20866082 * power_array -
+                    0.0000796973456 * power_array**2 -
+                    0.00000305255098 * power_array**3)
 
-            # Add value to the total consumption
-            fat = fat + y
+    # Scale result down to recording interval of 1s
+    fat_per_second = fat_per_hour / 3600
 
-    return fat
-
-
-def calculate_cho(slope, intercept, power, cho_list):
-    """function to calculate the CHO consumption"""
-
-    # Calculate CHO consumption based on linear function
-    cho = slope * power + intercept
-
-    # scaled down from CHO per day to 1 hour
-    cho = cho/24
-
-    # Add the calculated value to list
-    cho_list.append(round(cho))
-
-    # Scale down to recording intervall of 1s
-    cho = cho/60/60
-
-    # Return the cho conspumtion per s
-    return cho
+    # Sum total consumption
+    return np.sum(fat_per_second)
 
 
 def get_access_token():
@@ -116,17 +87,17 @@ def get_access_token():
         # Make strava auth call
         response = requests.post(
             'https://www.strava.com/oauth/token',
-            data= {
+            data={
                 'client_id': os.getenv('StravaClientID'),
-               'client_secret': os.getenv('StravaClientSecret'),
+                'client_secret': os.getenv('StravaClientSecret'),
                 'refresh_token': client.get_secret("StravaRefreshToken").value,
                 'grant_type': 'refresh_token'
             },
-            timeout=(3, 10) # (connect timeout, read timeout)
+            timeout=(3, 10)  # (connect timeout, read timeout)
         )
 
         # proceed if request was successfull
-        if response.status_code == requests.codes.ok: #pylint: disable=no-member
+        if response.status_code == 200:
 
             # Handle the new tokens and expire date
             new_strava_tokens = response.json()
@@ -156,7 +127,7 @@ def _fetch_json(url, params=None, timeout=(3, 10)):
     make the logic easier to test.
     """
     response = requests.get(url, params=params, timeout=timeout)
-    if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+    if response.status_code != 200:
         response.raise_for_status()
     return response.json()
 
@@ -278,7 +249,7 @@ def main(msg: func.QueueMessage) -> None:
             timeout=(3, 10),
         )
 
-        if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+        if response.status_code != 200:
             response.raise_for_status()
 
         # Inform user about the results

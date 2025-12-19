@@ -23,7 +23,7 @@ def init_key_vault():
 
 
 def main(req: func.HttpRequest,
-        msg: func.Out[func.QueueMessage])-> func.HttpResponse:
+         msg: func.Out[func.QueueMessage]) -> func.HttpResponse:
     """Main function of the HTTPTrigger Function"""
 
     logging.info('Python HTTP trigger function processed a request.')
@@ -40,16 +40,14 @@ def main(req: func.HttpRequest,
 
         logging.info("Parameters extracted")
 
-        if (hubmode and token):
+        if hubmode == 'subscribe' and token == os.getenv('StravaVerifyToken'):
+            logging.info('WEBHOOK_VERIFIED')
 
-            if (hubmode == 'subscribe' and token == os.getenv('StravaVerifyToken')):
-                logging.info('WEBHOOK_VERIFIED')
+            payload = {"hub.challenge": req.params.get('hub.challenge')}
 
-                payload= {"hub.challenge": req.params.get('hub.challenge')}
-
-                return func.HttpResponse(json.dumps(payload),
-                                        mimetype="application/json",
-                                        status_code=200)
+            return func.HttpResponse(json.dumps(payload),
+                                     mimetype="application/json",
+                                     status_code=200)
 
     elif mode == 'POST':
         logging.info("Running POST Method...")
@@ -58,10 +56,10 @@ def main(req: func.HttpRequest,
         logging.info("Event Data: %s", str(eventdata))
 
         # Identify the type of event
-        aspectType = eventdata.get('aspect_type')
-        objectType = eventdata.get('object_type')
+        aspect_type = eventdata.get('aspect_type')
+        object_type = eventdata.get('object_type')
 
-        if (aspectType == 'create' and objectType == 'activity'):
+        if aspect_type == 'create' and object_type == 'activity':
             logging.info("New activity detected.")
 
             # check azure table if eventid is already stored, means queue is already triggered.
@@ -80,9 +78,11 @@ def main(req: func.HttpRequest,
                 # Get event id
                 eventid = eventdata.get('object_id')
 
-                data = {"Name": "Output message",
-                        "PartitionKey": "message",
-                        "RowKey": str(eventid)}
+                data = {
+                    "Name": "Output message",
+                    "PartitionKey": "message",
+                    "RowKey": str(eventid)
+                }
 
                 # Insert new activity id into table
                 table_client.create_entity(entity=data)
