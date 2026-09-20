@@ -10,4 +10,15 @@ if [ -z "$PY_FILES" ]; then
 fi
 
 # Allow passing extra args via environment variable PYLINT_ARGS
-pylint ${PYLINT_ARGS:-} $PY_FILES
+
+# Prefer calling the pylint binary when available, otherwise fall back to
+# running it as a module with the active interpreter.
+if command -v pylint >/dev/null 2>&1; then
+  pylint ${PYLINT_ARGS:-} $PY_FILES
+elif [ -n "${VIRTUAL_ENV:-}" ] && [ -x "${VIRTUAL_ENV}/bin/python" ]; then
+  "${VIRTUAL_ENV}/bin/python" -m pylint ${PYLINT_ARGS:-} $PY_FILES
+elif [ -x "./.venv/bin/python" ]; then
+  ./.venv/bin/python -m pylint ${PYLINT_ARGS:-} $PY_FILES
+else
+  python -m pylint ${PYLINT_ARGS:-} $PY_FILES
+fi
