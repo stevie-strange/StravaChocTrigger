@@ -1,4 +1,4 @@
-pylint==4.0.1
-pre-commit==4.3.0
+pylint==4.0.8
+pre-commit==4.6.2
 pytest
 pytest-cov
