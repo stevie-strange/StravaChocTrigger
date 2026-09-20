@@ -15,52 +15,83 @@ from requests.models import Response
 # Base Strava URL for activities
 BASE_URL = 'https://www.strava.com/api/v3/activities/'
 
+# --- Substrate oxidation model -------------------------------------------
+# Fitted to a spiroergometry test from August 2026 (see GitHub issue #26):
+# 8 stages of ~30 s at 125..300 W in 25 W steps.
+#
+#   W    | 125   150   175   200   225   250   275   300
+#   CHO  | 101.2 127.3 140.9 161.6 199.2 244.9 261.2 275.5  g/h
+#   Fat  | 18.0  16.4  17.8  17.7  9.3   0.0   0.0   0.0    g/h
+#   EE   | 595   689   759   845   924   1029  1097  1157   kcal/h
+#   RER  | 0.92  0.93  0.94  0.94  0.97  1.03  1.05  1.12
+#
+# A synthetic 0 W resting anchor (24.48 g/h CHO, 9.92 g/h fat, the intercepts of
+# the previous model) is included in both fits so coasting seconds behave as before.
+#
+# CHO: quadratic in power. CHO oxidation rises exponentially with relative
+# intensity in principle (Brooks & Mercier 1994, J Appl Physiol 76:2253) but is
+# close to linear over a graded test and curvilinear fits do not improve on it
+# (Brun et al. 2026, Metabolites 16:121). The quadratic keeps the mild upward
+# curvature without the exponential's runaway extrapolation. Because CHO
+# oxidation cannot exceed total energy expenditure, the result is capped at
+# 100 % CHO of the report's energy expenditure line (linear in power, R2 0.997),
+# which also compensates the RER > 1 stages where indirect calorimetry
+# over-reads CHO.
+#
+# Fat: third-order polynomial, the conventional form for fat oxidation
+# kinetics (Achten & Jeukendrup; Cheneviere et al. 2009, MSSE 41:1615), fitted
+# to the anchor and stages 1-6 and clamped at zero above Fatmin (~250 W).
+#
+# Coefficients are ordered high -> low for np.polyval.
+CHO_POLY = np.array([1.399139593699e-03, 4.617486849396e-01, 2.324296033823e+01])
+ENERGY_KCAL_PER_H_POLY = np.array([3.269952380952, 192.047619047619])
+KCAL_PER_G_CHO = 4.184
+FAT_POLY = np.array([-8.359199834721e-06, 2.387407584606e-03,
+                     -1.139353733339e-01, 9.961256016061e+00])
+
+
+
+def _clean_power(power):
+    """Return the power stream as a float array without None/NaN, clipped at 0 W."""
+    power_array = np.array(power, dtype=float)
+    power_array = power_array[~np.isnan(power_array)]
+    return np.clip(power_array, 0, None)
 
 
 def calc_cho(power):
-    """function to calculate CHO consumption based on e function"""
+    """Total CHO consumption (g) for a 1 Hz power stream.
 
-    # Convert to numpy array and filter out None values
-    power_array = np.array(power, dtype=float)
-    power_array = power_array[~np.isnan(power_array)]
+    Quadratic model in power, capped at 100 % CHO of the energy expenditure.
+    See the substrate oxidation model notes in the constants section.
+    """
+    power_array = _clean_power(power)
 
     if len(power_array) == 0:
         return 0
 
-    # Calculate CHO consumption in grams per hour using vectorized operations
-    cho_per_hour = (24.4817243 - 0.358447879 * power_array +
-                    0.00708969851 * power_array**2 -
-                    0.00000982862627 * power_array**3)
+    cho_per_hour = np.minimum(
+        np.polyval(CHO_POLY, power_array),
+        np.polyval(ENERGY_KCAL_PER_H_POLY, power_array) / KCAL_PER_G_CHO)
 
-    # Scale result down to recording interval of 1s
-    cho_per_second = cho_per_hour / 3600
-
-    # Sum total consumption
-    return np.sum(cho_per_second)
+    # Scale result down to recording interval of 1s and sum total consumption
+    return np.sum(cho_per_hour / 3600)
 
 
-# Calculate fat consumption based on the power
 def calculate_fat(power):
-    """function to calculate the fat consumption"""
+    """Total fat consumption (g) for a 1 Hz power stream.
 
-    # Convert to numpy array and filter out None and zero/negative values
-    power_array = np.array(power, dtype=float)
-    # Filter out NaN and values <= 0
-    power_array = power_array[~np.isnan(power_array) & (power_array > 0)]
+    Cubic model in power, clamped at zero above Fatmin.
+    See the substrate oxidation model notes in the constants section.
+    """
+    power_array = _clean_power(power)
 
     if len(power_array) == 0:
         return 0
 
-    # Calculate fat consumption in grams per hour using vectorized operations
-    fat_per_hour = (9.92211011 + 0.20866082 * power_array -
-                    0.0000796973456 * power_array**2 -
-                    0.00000305255098 * power_array**3)
+    fat_per_hour = np.clip(np.polyval(FAT_POLY, power_array), 0, None)
 
-    # Scale result down to recording interval of 1s
-    fat_per_second = fat_per_hour / 3600
-
-    # Sum total consumption
-    return np.sum(fat_per_second)
+    # Scale result down to recording interval of 1s and sum total consumption
+    return np.sum(fat_per_hour / 3600)
 
 
 def get_access_token():
