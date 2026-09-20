@@ -27,7 +27,9 @@ Resulting curve (g/h):
 | CHO | 23.2 | 49.8 | 83.4 | 124.0 | 171.6 | 226.1 | 280.4 | 319.4 | 358.5 | 436.7 |
 | Fat | 10.0 | 9.2 | 14.1 | 18.4 | 15.8 | 0.1 | 0 | 0 | 0 | 0 |
 
-**Updating after a new test:** edit the stage table in `scripts/fit_metabolic_model.py`, run it, paste the printed arrays into the constants block of `QueueTrigger1/__init__.py`, and update the expected values in `tests/unit/test_cho_model.py`.
+**Interactive explorer:** [`docs/substrate-explorer.html`](docs/substrate-explorer.html) plots both curves and estimates CHO, fat, kJ (mechanical work) and kcal for a ride built from watts + duration segments. Open it in a browser or as the published claude.ai artifact.
+
+**Updating after a new test:** edit the stage table in `scripts/fit_metabolic_model.py`, run it, paste the printed arrays into the constants block of `QueueTrigger1/__init__.py` and into the model block at the top of the `<script>` in `docs/substrate-explorer.html`, and update the expected values in `tests/unit/test_cho_model.py`.
 
 ## Tests
 

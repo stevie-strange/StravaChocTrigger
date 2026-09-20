@@ -76,6 +76,8 @@ Run tests:
 
 - `scripts/run_pylint.sh`
   - Runs pylint over all tracked Python files.
+- `docs/substrate-explorer.html`
+  - Self-contained interactive page (also published as a claude.ai artifact) that plots the CHO/fat curves and estimates CHO, fat, kJ and kcal for a ride built from watts + duration segments. Carries a copy of the model constants from `QueueTrigger1/__init__.py`.
 - `.github/workflows/`
   - `tests.yml` (pytest + pre-commit), `pylint.yml`, `codeql-analysis.yml`, and `main_steviehttptrigger.yml` (build + deploy to Azure). All read the Python version from `.python-version`.
 - `.github/dependabot.yml`
