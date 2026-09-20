@@ -2,8 +2,10 @@
 # The Python Worker is managed by Azure Functions platform
 # Manually managing azure-functions-worker may cause unexpected issues
 
-azure-functions
-azure-keyvault-secrets
-azure-identity
-azure-data-tables
-numpy
+# azure-functions 1.x targets Python 3.10-3.12 (2.x requires Python >= 3.13).
+# The app runs on the Linux Consumption plan, whose last supported Python is 3.12.
+azure-functions==1.25.0
+azure-identity==1.25.3
+azure-keyvault-secrets==4.11.2
+azure-data-tables==12.7.0
+numpy==2.5.3
