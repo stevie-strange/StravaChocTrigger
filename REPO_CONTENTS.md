@@ -7,7 +7,9 @@ This repository contains an Azure Functions (Python) app that reacts to Strava w
 - `host.json`
   - Azure Functions host configuration (queue extension tuning, AppInsights sampling, extension bundle).
 - `requirements.txt`
-  - Runtime dependencies for the Functions app (Azure Functions SDK + KeyVault/Identity/Table + NumPy).
+  - Runtime dependencies for the Functions app (Azure Functions SDK + KeyVault/Identity/Table + NumPy), pinned to exact versions and kept current by Dependabot.
+- `.python-version`
+  - Python version (`3.12`) used by every GitHub workflow via `actions/setup-python`. 3.12 is the last version supported on the Linux Consumption plan.
 - `requirements-dev.txt`
   - Developer dependencies (pylint, pre-commit, pytest, pytest-cov).
 - `pytest.ini`
@@ -74,6 +76,10 @@ Run tests:
 
 - `scripts/run_pylint.sh`
   - Runs pylint over all tracked Python files.
+- `.github/workflows/`
+  - `tests.yml` (pytest + pre-commit), `pylint.yml`, `codeql-analysis.yml`, and `main_steviehttptrigger.yml` (build + deploy to Azure). All read the Python version from `.python-version`.
+- `.github/dependabot.yml`
+  - Weekly grouped update PRs for GitHub Actions and pip dependencies.
 
 Run lint:
 
