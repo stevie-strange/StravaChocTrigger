@@ -8,4 +8,4 @@ azure-functions==1.25.0
 azure-identity==1.26.0
 azure-keyvault-secrets==4.11.3
 azure-data-tables==12.7.0
-numpy==2.5.3
+numpy==2.5.4
