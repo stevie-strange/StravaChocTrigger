@@ -1,0 +1,790 @@
+<title>Substrate Explorer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f7f6f2;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --cho: #2a78d6;
+    --cho-soft: rgba(42, 120, 214, 0.12);
+    --fat: #eb6834;
+    --fat-soft: rgba(235, 104, 52, 0.12);
+    --marker: #0b0b0b;
+    --danger: #d03b3b;
+    --focus: #2a78d6;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --cho: #3987e5;
+      --cho-soft: rgba(57, 135, 229, 0.18);
+      --fat: #d95926;
+      --fat-soft: rgba(217, 89, 38, 0.18);
+      --marker: #ffffff;
+      --danger: #e66767;
+      --focus: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --cho: #3987e5;
+    --cho-soft: rgba(57, 135, 229, 0.18);
+    --fat: #d95926;
+    --fat-soft: rgba(217, 89, 38, 0.18);
+    --marker: #ffffff;
+    --danger: #e66767;
+    --focus: #3987e5;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-block: 28px 48px;
+    padding-inline: 16px;
+    display: grid;
+    gap: 20px;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  header p {
+    margin: 4px 0 0;
+    color: var(--ink-2);
+    max-width: 65ch;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .card-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .card-title h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-2);
+  }
+
+  /* Chart */
+  .chart-wrap { position: relative; }
+  .chart-wrap svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--sans);
+  }
+  .chart-wrap svg text {
+    font-size: 12px;
+    fill: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .chart-wrap svg .axis-title { fill: var(--ink-2); }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    white-space: nowrap;
+    color: var(--ink);
+    z-index: 2;
+  }
+  .tooltip .tt-p { font-weight: 600; margin-bottom: 4px; }
+  .tooltip .tt-row { display: flex; gap: 8px; align-items: center; }
+  .tooltip .tt-row span:last-child { margin-left: auto; font-family: var(--mono); }
+  .swatch {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex: none;
+  }
+  .swatch.cho { background: var(--cho); }
+  .swatch.fat { background: var(--fat); }
+  .swatch.ee { background: transparent; border-top: 2px dashed var(--muted); height: 0; border-radius: 0; }
+  .swatch.stage { background: transparent; border: 2px solid var(--ink-2); border-radius: 50%; width: 9px; height: 9px; }
+  .swatch.seg { background: transparent; border-left: 2px solid var(--marker); width: 0; border-radius: 0; }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* Two-column workbench */
+  .bench {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .bench { grid-template-columns: 1fr; }
+  }
+
+  /* Segments */
+  .seg-table { width: 100%; border-collapse: collapse; }
+  .seg-table th, .seg-table td {
+    padding: 6px 6px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid var(--grid);
+    white-space: nowrap;
+  }
+  .seg-table th {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .seg-table th:first-child, .seg-table td:first-child { text-align: left; padding-left: 0; }
+  .seg-table td.num { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+  .seg-table tr:last-child td { border-bottom: 0; }
+  .seg-table input[type="number"] {
+    width: 80px;
+    max-width: 100%;
+    padding: 6px 8px;
+    font: inherit;
+    font-family: var(--mono);
+    font-size: 14px;
+    text-align: right;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .seg-table input[type="number"]:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+  .seg-table .idx {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .seg-table .del {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .seg-table .del:hover { color: var(--danger); background: var(--bg); }
+  .seg-table .del:focus-visible { outline: 2px solid var(--focus); }
+  .seg-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    align-items: center;
+  }
+  .btn {
+    appearance: none;
+    font: inherit;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .btn.primary { background: var(--cho); border-color: transparent; color: #fff; }
+  .btn:hover { filter: brightness(0.96); }
+  .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .seg-scroll { overflow-x: auto; }
+
+  /* Totals */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .tile {
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    min-width: 0;
+  }
+  .tile.cho { border-left: 3px solid var(--cho); }
+  .tile.fat { border-left: 3px solid var(--fat); }
+  .tile .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .tile .value {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.15;
+    margin-top: 2px;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .tile .value small {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ink-2);
+    margin-left: 3px;
+  }
+  .tile .sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .split {
+    margin-top: 10px;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    gap: 2px;
+    background: var(--grid);
+  }
+  .split .cho { background: var(--cho); }
+  .split .fat { background: var(--fat); }
+  .split-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--ink-2);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  details { color: var(--ink-2); font-size: 13px; }
+  details summary { cursor: pointer; color: var(--ink-2); font-weight: 500; }
+  .curve-table-wrap { overflow-x: auto; margin-top: 10px; }
+  .curve-table { border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  .curve-table th, .curve-table td {
+    padding: 4px 10px;
+    text-align: right;
+    border-bottom: 1px solid var(--grid);
+    white-space: nowrap;
+    font-weight: 400;
+  }
+  .curve-table th:first-child, .curve-table td:first-child { text-align: left; color: var(--muted); }
+  .curve-table thead th { color: var(--muted); }
+
+  footer.note {
+    font-size: 12px;
+    color: var(--muted);
+    max-width: 70ch;
+  }
+  footer.note code { font-family: var(--mono); font-size: 11.5px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .tile .value { transition: color 120ms; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Substrate Explorer</h1>
+    <p>Carbohydrate and fat oxidation curves fitted to the August 2026 spiroergometry test. Build a ride from power segments to estimate fuel use and work.</p>
+  </header>
+
+  <section class="card" aria-labelledby="chart-h">
+    <div class="card-title">
+      <h2 id="chart-h">Oxidation rate by power</h2>
+      <div class="legend" aria-hidden="true">
+        <span><i class="swatch cho"></i>CHO</span>
+        <span><i class="swatch fat"></i>Fat</span>
+        <span><i class="swatch ee"></i>Energy ceiling</span>
+        <span><i class="swatch stage"></i>Measured stage</span>
+        <span><i class="swatch seg"></i>Ride segment</span>
+      </div>
+    </div>
+    <div class="chart-wrap" id="chart-wrap">
+      <svg id="chart" role="img" aria-label="CHO and fat oxidation in grams per hour against power in watts"></svg>
+      <div class="tooltip" id="tooltip" hidden></div>
+    </div>
+    <details style="margin-top:12px">
+      <summary>Curve values as a table</summary>
+      <div class="curve-table-wrap">
+        <table class="curve-table" id="curve-table"></table>
+      </div>
+    </details>
+  </section>
+
+  <div class="bench">
+    <section class="card" aria-labelledby="seg-h">
+      <div class="card-title">
+        <h2 id="seg-h">Ride segments</h2>
+        <span class="hint">Constant power per segment</span>
+      </div>
+      <div class="seg-scroll">
+        <table class="seg-table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Watts</th>
+              <th scope="col">Minutes</th>
+              <th scope="col">CHO g</th>
+              <th scope="col">Fat g</th>
+              <th scope="col">kJ</th>
+              <th scope="col" aria-label="Remove"></th>
+            </tr>
+          </thead>
+          <tbody id="seg-body"></tbody>
+        </table>
+      </div>
+      <div class="seg-actions">
+        <button class="btn primary" id="add-seg" type="button">Add segment</button>
+        <button class="btn" id="reset-seg" type="button">Reset</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="tot-h">
+      <div class="card-title">
+        <h2 id="tot-h">Ride totals</h2>
+      </div>
+      <div class="tiles">
+        <div class="tile cho">
+          <div class="label">Carbohydrate</div>
+          <div class="value" id="t-cho">–<small>g</small></div>
+          <div class="sub" id="t-cho-rate">– g/h</div>
+        </div>
+        <div class="tile fat">
+          <div class="label">Fat</div>
+          <div class="value" id="t-fat">–<small>g</small></div>
+          <div class="sub" id="t-fat-rate">– g/h</div>
+        </div>
+        <div class="tile">
+          <div class="label">Work</div>
+          <div class="value" id="t-kj">–<small>kJ</small></div>
+          <div class="sub">mechanical, W × s</div>
+        </div>
+        <div class="tile">
+          <div class="label">Energy</div>
+          <div class="value" id="t-kcal">–<small>kcal</small></div>
+          <div class="sub">metabolic, from substrates</div>
+        </div>
+        <div class="tile">
+          <div class="label">Duration</div>
+          <div class="value" id="t-time">–</div>
+        </div>
+        <div class="tile">
+          <div class="label">Average power</div>
+          <div class="value" id="t-avg">–<small>W</small></div>
+          <div class="sub">time-weighted</div>
+        </div>
+      </div>
+      <div class="split" aria-hidden="true">
+        <div class="cho" id="split-cho" style="width:50%"></div>
+        <div class="fat" id="split-fat" style="width:50%"></div>
+      </div>
+      <div class="split-legend">
+        <span id="split-cho-l">CHO – % of kcal</span>
+        <span id="split-fat-l">Fat – %</span>
+      </div>
+    </section>
+  </div>
+
+  <footer class="note">
+    Model coefficients are copied from <code>QueueTrigger1/__init__.py</code> (CHO: quadratic in power, capped at 100 % CHO of the energy-expenditure line; fat: cubic, clamped at zero above Fatmin). kJ is mechanical work (watts × seconds ÷ 1000, Strava's “Energy Output”); kcal is substrate energy (CHO × 4.184 + fat × 9). Segments assume constant power, matching the per-second sum the Strava trigger computes.
+  </footer>
+</div>
+
+<script>
+  // ---- Substrate oxidation model (mirror of QueueTrigger1/__init__.py) ----
+  // Coefficients ordered high -> low, as for np.polyval.
+  const CHO_POLY = [1.399139593699e-03, 4.617486849396e-01, 2.324296033823e+01];
+  const ENERGY_KCAL_PER_H_POLY = [3.269952380952, 192.047619047619];
+  const KCAL_PER_G_CHO = 4.184;
+  const FAT_POLY = [-8.359199834721e-06, 2.387407584606e-03,
+                    -1.139353733339e-01, 9.961256016061e+00];
+  const KCAL_PER_G_FAT = 9;
+
+  // Measured stages (scripts/fit_metabolic_model.py) plus the 0 W resting anchor.
+  const STAGES = [
+    [0, 24.48, 9.92],
+    [125, 101.201, 18.044],
+    [150, 127.302, 16.371],
+    [175, 140.911, 17.825],
+    [200, 161.568, 17.735],
+    [225, 199.191, 9.321],
+    [250, 244.943, 0.0],
+    [275, 261.239, 0.0],
+    [300, 275.491, 0.0],
+  ];
+
+  function polyval(coeffs, x) {
+    let y = 0;
+    for (const c of coeffs) y = y * x + c;
+    return y;
+  }
+  function energyCeilingPerHour(p) {
+    return polyval(ENERGY_KCAL_PER_H_POLY, p) / KCAL_PER_G_CHO;
+  }
+  function choPerHour(p) {
+    p = Math.max(0, p);
+    return Math.min(polyval(CHO_POLY, p), energyCeilingPerHour(p));
+  }
+  function fatPerHour(p) {
+    p = Math.max(0, p);
+    return Math.max(0, polyval(FAT_POLY, p));
+  }
+  function segmentTotals(watts, minutes) {
+    const s = Math.max(0, minutes) * 60;
+    const p = Math.max(0, watts);
+    const cho = choPerHour(p) * s / 3600;
+    const fat = fatPerHour(p) * s / 3600;
+    return { seconds: s, watts: p, cho, fat,
+             kj: p * s / 1000,
+             kcal: cho * KCAL_PER_G_CHO + fat * KCAL_PER_G_FAT };
+  }
+
+  // ---- Segment state ----
+  const STORAGE_KEY = 'substrate-explorer.segments.v1';
+  const DEFAULT_SEGMENTS = [{ watts: 200, minutes: 60 }];
+  let segments = loadSegments();
+
+  function loadSegments() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) {
+          return parsed.map(s => ({ watts: Number(s.watts) || 0, minutes: Number(s.minutes) || 0 }));
+        }
+      }
+    } catch (e) { /* storage unavailable: fall through */ }
+    return DEFAULT_SEGMENTS.map(s => ({ ...s }));
+  }
+  function saveSegments() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(segments)); } catch (e) { /* ignore */ }
+  }
+
+  // ---- Formatting ----
+  const fmt0 = n => Math.round(n).toLocaleString('en-US');
+  const fmt1 = n => n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  function fmtTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.round((seconds % 3600) / 60);
+    if (h === 0) return `${m} min`;
+    return `${h} h ${String(m).padStart(2, '0')} min`;
+  }
+
+  // ---- Segment table ----
+  const segBody = document.getElementById('seg-body');
+
+  function renderSegments() {
+    segBody.innerHTML = '';
+    segments.forEach((seg, i) => {
+      const t = segmentTotals(seg.watts, seg.minutes);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="idx">${i + 1}</td>
+        <td><input type="number" id="seg-${i}-watts" inputmode="numeric" min="0" max="2000" step="5" value="${seg.watts}" aria-label="Segment ${i + 1} power in watts"></td>
+        <td><input type="number" id="seg-${i}-minutes" inputmode="decimal" min="0" step="1" value="${seg.minutes}" aria-label="Segment ${i + 1} duration in minutes"></td>
+        <td class="num">${fmt1(t.cho)}</td>
+        <td class="num">${fmt1(t.fat)}</td>
+        <td class="num">${fmt0(t.kj)}</td>
+        <td><button class="del" type="button" aria-label="Remove segment ${i + 1}" title="Remove segment">×</button></td>`;
+      tr.querySelector(`#seg-${i}-watts`).addEventListener('input', e => {
+        segments[i].watts = Number(e.target.value) || 0;
+        update({ rebuild: false });
+      });
+      tr.querySelector(`#seg-${i}-minutes`).addEventListener('input', e => {
+        segments[i].minutes = Number(e.target.value) || 0;
+        update({ rebuild: false });
+      });
+      tr.querySelector('.del').addEventListener('click', () => {
+        segments.splice(i, 1);
+        if (!segments.length) segments = DEFAULT_SEGMENTS.map(s => ({ ...s }));
+        update({ rebuild: true });
+      });
+      segBody.appendChild(tr);
+    });
+  }
+
+  // Update only the computed cells so typing keeps focus.
+  function refreshSegmentCells() {
+    [...segBody.rows].forEach((tr, i) => {
+      const t = segmentTotals(segments[i].watts, segments[i].minutes);
+      const nums = tr.querySelectorAll('td.num');
+      nums[0].textContent = fmt1(t.cho);
+      nums[1].textContent = fmt1(t.fat);
+      nums[2].textContent = fmt0(t.kj);
+    });
+  }
+
+  document.getElementById('add-seg').addEventListener('click', () => {
+    const last = segments[segments.length - 1] || DEFAULT_SEGMENTS[0];
+    segments.push({ watts: last.watts, minutes: 30 });
+    update({ rebuild: true });
+    const el = document.getElementById(`seg-${segments.length - 1}-watts`);
+    if (el) { el.focus(); el.select(); }
+  });
+  document.getElementById('reset-seg').addEventListener('click', () => {
+    segments = DEFAULT_SEGMENTS.map(s => ({ ...s }));
+    update({ rebuild: true });
+  });
+
+  // ---- Totals ----
+  function renderTotals() {
+    const tot = segments.reduce((a, s) => {
+      const t = segmentTotals(s.watts, s.minutes);
+      a.seconds += t.seconds; a.cho += t.cho; a.fat += t.fat;
+      a.kj += t.kj; a.kcal += t.kcal; a.ws += t.watts * t.seconds;
+      return a;
+    }, { seconds: 0, cho: 0, fat: 0, kj: 0, kcal: 0, ws: 0 });
+    const hours = tot.seconds / 3600;
+    const avg = tot.seconds ? tot.ws / tot.seconds : 0;
+    document.getElementById('t-cho').innerHTML = `${fmt0(tot.cho)}<small>g</small>`;
+    document.getElementById('t-fat').innerHTML = `${fmt0(tot.fat)}<small>g</small>`;
+    document.getElementById('t-cho-rate').textContent = hours ? `${fmt0(tot.cho / hours)} g/h` : '– g/h';
+    document.getElementById('t-fat-rate').textContent = hours ? `${fmt1(tot.fat / hours)} g/h` : '– g/h';
+    document.getElementById('t-kj').innerHTML = `${fmt0(tot.kj)}<small>kJ</small>`;
+    document.getElementById('t-kcal').innerHTML = `${fmt0(tot.kcal)}<small>kcal</small>`;
+    document.getElementById('t-time').textContent = fmtTime(tot.seconds);
+    document.getElementById('t-avg').innerHTML = `${fmt0(avg)}<small>W</small>`;
+    const choKcal = tot.cho * KCAL_PER_G_CHO;
+    const choPct = tot.kcal ? choKcal / tot.kcal * 100 : 0;
+    document.getElementById('split-cho').style.width = `${choPct}%`;
+    document.getElementById('split-fat').style.width = `${100 - choPct}%`;
+    document.getElementById('split-cho-l').textContent = `CHO ${fmt0(choPct)} % of kcal`;
+    document.getElementById('split-fat-l').textContent = `Fat ${fmt0(100 - choPct)} %`;
+  }
+
+  // ---- Chart ----
+  const X_MAX = 500;
+  const Y_MAX = 450;
+  const svg = document.getElementById('chart');
+  const wrap = document.getElementById('chart-wrap');
+  const tooltip = document.getElementById('tooltip');
+  const NS = 'http://www.w3.org/2000/svg';
+  let scale = null;
+
+  function el(name, attrs, text) {
+    const n = document.createElementNS(NS, name);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function pathFor(fn, x0, x1, step) {
+    const pts = [];
+    for (let p = x0; p <= x1 + 1e-9; p += step) {
+      pts.push(`${scale.x(p).toFixed(1)},${scale.y(Math.min(fn(p), Y_MAX)).toFixed(1)}`);
+    }
+    return 'M' + pts.join('L');
+  }
+
+  function renderChart() {
+    const width = Math.max(280, wrap.clientWidth);
+    const narrow = width < 520;
+    const height = Math.round(Math.min(380, Math.max(240, width * 0.52)));
+    const m = { top: 16, right: 14, bottom: narrow ? 36 : 40, left: narrow ? 40 : 52 };
+    const iw = width - m.left - m.right;
+    const ih = height - m.top - m.bottom;
+    scale = {
+      x: p => m.left + p / X_MAX * iw,
+      y: v => m.top + ih - v / Y_MAX * ih,
+      m, iw, ih, width, height,
+    };
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+    svg.innerHTML = '';
+
+    // Gridlines and axes
+    const g = el('g', {});
+    for (let v = 0; v <= Y_MAX; v += 100) {
+      g.appendChild(el('line', { x1: m.left, x2: m.left + iw, y1: scale.y(v), y2: scale.y(v),
+        stroke: v === 0 ? 'var(--axis)' : 'var(--grid)', 'stroke-width': 1 }));
+      g.appendChild(el('text', { x: m.left - 8, y: scale.y(v) + 4, 'text-anchor': 'end' }, String(v)));
+    }
+    const xStep = narrow ? 100 : 50;
+    for (let p = 0; p <= X_MAX; p += xStep) {
+      g.appendChild(el('line', { x1: scale.x(p), x2: scale.x(p), y1: m.top + ih, y2: m.top + ih + 4, stroke: 'var(--axis)' }));
+      g.appendChild(el('text', { x: scale.x(p), y: m.top + ih + 17, 'text-anchor': 'middle' }, String(p)));
+    }
+    g.appendChild(el('text', { x: m.left + iw, y: m.top + ih + 32, 'text-anchor': 'end', class: 'axis-title' }, 'Power (W)'));
+    g.appendChild(el('text', { x: m.left - 8, y: m.top - 4, 'text-anchor': 'end', class: 'axis-title' }, 'g/h'));
+    svg.appendChild(g);
+
+    // Segment markers (behind the curves)
+    const segG = el('g', {});
+    segments.forEach((s, i) => {
+      if (s.minutes <= 0) return;
+      const p = Math.min(Math.max(0, s.watts), X_MAX);
+      const x = scale.x(p);
+      segG.appendChild(el('line', { x1: x, x2: x, y1: m.top, y2: m.top + ih,
+        stroke: 'var(--marker)', 'stroke-width': 1, 'stroke-opacity': 0.35, 'stroke-dasharray': '2 3' }));
+      segG.appendChild(el('polygon', { points: `${x - 4},${m.top + ih + 1} ${x + 4},${m.top + ih + 1} ${x},${m.top + ih - 5}`,
+        fill: 'var(--marker)', 'fill-opacity': 0.8 }));
+      const label = s.watts > X_MAX ? `${i + 1} ›` : String(i + 1);
+      segG.appendChild(el('text', { x: x, y: m.top - 4, 'text-anchor': 'middle', style: 'font-size:11px', fill: 'var(--ink-2)' }, label));
+    });
+    svg.appendChild(segG);
+
+    // Energy ceiling (dashed), then curves
+    svg.appendChild(el('path', { d: pathFor(energyCeilingPerHour, 0, X_MAX, 5), fill: 'none',
+      stroke: 'var(--muted)', 'stroke-width': 1.25, 'stroke-dasharray': '5 4', 'stroke-opacity': 0.8 }));
+    svg.appendChild(el('path', { d: pathFor(fatPerHour, 0, X_MAX, 2.5), fill: 'none',
+      stroke: 'var(--fat)', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+    svg.appendChild(el('path', { d: pathFor(choPerHour, 0, X_MAX, 2.5), fill: 'none',
+      stroke: 'var(--cho)', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+
+    // Measured stages: hollow rings with a surface gap
+    for (const [p, cho, fat] of STAGES) {
+      svg.appendChild(el('circle', { cx: scale.x(p), cy: scale.y(fat), r: 4, fill: 'var(--surface)', stroke: 'var(--fat)', 'stroke-width': 1.75 }));
+      svg.appendChild(el('circle', { cx: scale.x(p), cy: scale.y(cho), r: 4, fill: 'var(--surface)', stroke: 'var(--cho)', 'stroke-width': 1.75 }));
+    }
+
+    // Direct labels at the right edge
+    const choEnd = choPerHour(X_MAX), fatEnd = fatPerHour(X_MAX);
+    svg.appendChild(el('text', { x: m.left + iw - 4, y: scale.y(choEnd) - 8, 'text-anchor': 'end', fill: 'var(--ink-2)', style: 'font-weight:600' }, 'CHO'));
+    svg.appendChild(el('text', { x: m.left + iw - 4, y: scale.y(fatEnd) - 8, 'text-anchor': 'end', fill: 'var(--ink-2)', style: 'font-weight:600' }, 'Fat'));
+
+    // Segment points on the curves (drawn last, with a surface ring)
+    segments.forEach(s => {
+      if (s.minutes <= 0) return;
+      const p = Math.min(Math.max(0, s.watts), X_MAX);
+      svg.appendChild(el('circle', { cx: scale.x(p), cy: scale.y(fatPerHour(p)), r: 5, fill: 'var(--fat)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+      svg.appendChild(el('circle', { cx: scale.x(p), cy: scale.y(choPerHour(p)), r: 5, fill: 'var(--cho)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+    });
+
+    // Hover layer
+    const hover = el('g', { id: 'hover' });
+    hover.appendChild(el('line', { id: 'hover-x', x1: 0, x2: 0, y1: m.top, y2: m.top + ih, stroke: 'var(--ink-2)', 'stroke-width': 1, 'stroke-opacity': 0.5 }));
+    hover.appendChild(el('circle', { id: 'hover-cho', r: 4.5, fill: 'var(--cho)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+    hover.appendChild(el('circle', { id: 'hover-fat', r: 4.5, fill: 'var(--fat)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+    hover.setAttribute('visibility', 'hidden');
+    svg.appendChild(hover);
+    const hit = el('rect', { x: m.left, y: m.top, width: iw, height: ih, fill: 'transparent', style: 'cursor:crosshair;touch-action:none' });
+    svg.appendChild(hit);
+    hit.addEventListener('pointermove', onHover);
+    hit.addEventListener('pointerdown', onHover);
+    hit.addEventListener('pointerleave', hideHover);
+  }
+
+  function onHover(ev) {
+    const rect = svg.getBoundingClientRect();
+    const xPx = (ev.clientX - rect.left) * (scale.width / rect.width);
+    const p = Math.round(Math.min(X_MAX, Math.max(0, (xPx - scale.m.left) / scale.iw * X_MAX)));
+    const x = scale.x(p);
+    const cho = choPerHour(p), fat = fatPerHour(p);
+    const hover = document.getElementById('hover');
+    hover.setAttribute('visibility', 'visible');
+    const line = document.getElementById('hover-x');
+    line.setAttribute('x1', x); line.setAttribute('x2', x);
+    const hc = document.getElementById('hover-cho');
+    hc.setAttribute('cx', x); hc.setAttribute('cy', scale.y(cho));
+    const hf = document.getElementById('hover-fat');
+    hf.setAttribute('cx', x); hf.setAttribute('cy', scale.y(fat));
+
+    tooltip.hidden = false;
+    tooltip.innerHTML = `
+      <div class="tt-p">${p} W</div>
+      <div class="tt-row"><i class="swatch cho"></i><span>CHO</span><span>${fmt1(cho)} g/h</span></div>
+      <div class="tt-row"><i class="swatch fat"></i><span>Fat</span><span>${fmt1(fat)} g/h</span></div>
+      <div class="tt-row"><i class="swatch ee"></i><span>Ceiling</span><span>${fmt1(energyCeilingPerHour(p))} g/h</span></div>`;
+    const wrapRect = wrap.getBoundingClientRect();
+    const px = ev.clientX - wrapRect.left;
+    const py = ev.clientY - wrapRect.top;
+    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+    let left = px + 14;
+    if (left + tw > wrapRect.width) left = px - tw - 14;
+    let top = py - th - 10;
+    if (top < 0) top = py + 14;
+    tooltip.style.left = `${Math.max(0, left)}px`;
+    tooltip.style.top = `${top}px`;
+  }
+  function hideHover() {
+    document.getElementById('hover').setAttribute('visibility', 'hidden');
+    tooltip.hidden = true;
+  }
+
+  // ---- Curve table (text alternative) ----
+  function renderCurveTable() {
+    const table = document.getElementById('curve-table');
+    const powers = [];
+    for (let p = 0; p <= X_MAX; p += 50) powers.push(p);
+    const row = (label, fn, digits) =>
+      `<tr><td>${label}</td>${powers.map(p => `<td>${fn(p).toFixed(digits)}</td>`).join('')}</tr>`;
+    table.innerHTML = `
+      <thead><tr><th>W</th>${powers.map(p => `<th>${p}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${row('CHO g/h', choPerHour, 1)}
+        ${row('Fat g/h', fatPerHour, 1)}
+        ${row('Ceiling g/h', energyCeilingPerHour, 1)}
+      </tbody>`;
+  }
+
+  // ---- Wire-up ----
+  function update({ rebuild }) {
+    if (rebuild) renderSegments(); else refreshSegmentCells();
+    renderTotals();
+    renderChart();
+    saveSegments();
+  }
+
+  renderCurveTable();
+  update({ rebuild: true });
+  let resizeTimer = null;
+  new ResizeObserver(() => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderChart, 60);
+  }).observe(wrap);
+</script>
